@@ -586,7 +586,7 @@ textarea.note-body:focus { border-color:var(--blue); background:var(--surface); 
       <button onclick="newInterview()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;">+ New Interview</button>
       <button onclick="exportEmail()" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;">✉️ Send by Email</button>
       <button onclick="exportPDF()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;">📄 Print / PDF</button>
-      <button onclick="saveToNotes()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;">📝 Save to Notes</button>
+      <button onclick="saveToNotes()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;">📤 Share / Save to Notes</button>
       <select id="iv-saved" onchange="loadSavedInterview(this.value)" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;flex:1;min-width:120px;">
         <option value="">Load saved interview…</option>
       </select>
@@ -1855,14 +1855,28 @@ function exportPDF() {
 
 function saveToNotes() {
   var company = document.getElementById('iv-company').value || 'Interview';
-  var body    = buildInterviewText();
-  // Add to notes
+  var text    = buildInterviewText();
+
+  // Use native share sheet on iOS/mobile (opens Notes, OneDrive, Mail, etc.)
+  if (navigator.share) {
+    navigator.share({
+      title: 'ASW 2026 — ' + company,
+      text:  text
+    }).catch(function(e) {
+      if (e.name !== 'AbortError') saveToInternalNotes(company, text);
+    });
+  } else {
+    // Desktop fallback: save to internal Notes tab
+    saveToInternalNotes(company, text);
+  }
+}
+
+function saveToInternalNotes(company, text) {
   try {
     var notes = JSON.parse(localStorage.getItem('asw26_notes') || '[]');
-    notes.unshift({ id: Date.now(), company: company + ' (Interview)', body: body, ts: new Date().toLocaleString('en-GB') });
+    notes.unshift({ id: Date.now(), company: company + ' (Interview)', body: text, ts: new Date().toLocaleString('en-GB') });
     localStorage.setItem('asw26_notes', JSON.stringify(notes));
     alert('Saved to Notes tab ✓');
-    // Re-render notes if visible
     if (typeof renderNotes === 'function') renderNotes();
   } catch(e) { alert('Error: ' + e.message); }
 }
