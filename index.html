@@ -1870,9 +1870,15 @@ function saveToNotes() {
 // Init
 document.addEventListener('DOMContentLoaded', function() {
   ivLoad();
-  // Set today's date
+  // Restore saved date or set today
   var d = document.getElementById('iv-date');
-  if (d && !d.value) d.value = new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+  if (d) {
+    var saved = localStorage.getItem('asw26_iv_date');
+    d.value = saved || new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+    d.addEventListener('input', function() {
+      localStorage.setItem('asw26_iv_date', this.value);
+    });
+  }
   updateIvProgress();
 });
 </script>
