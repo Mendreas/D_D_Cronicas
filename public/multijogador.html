@@ -33,6 +33,11 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 <div id="appSection" hidden>
 <section class="bar"><div>Ligado como <strong id="userLabel"></strong></div><button class="secondary" id="logoutBtn">Terminar sessão</button></section>
 <section id="lobbySection"><h2>Salas de aventura</h2><label>Código de acesso do jogo (GAME_ACCESS_CODE)<input id="gameCode" type="password" placeholder="O mesmo código do jogo individual"></label><button class="secondary" id="codeSave">Confirmar código</button><p class="muted">Cria uma sala e envia o código de convite à tua filha, ou entra numa sala que já exista.</p>
+<label>Campanha<select id="campaignChoice">
+<option value="veu">O Limiar do Véu — ruínas e mistério</option>
+<option value="farol">O Farol de Cinzabruma — intriga costeira</option>
+<option value="estrelas">As Chaves das Estrelas — observatório perdido</option>
+</select></label>
 <label>O teu nome no jogo<input id="displayName" maxlength="60" placeholder="Mendreas"></label>
 <div class="row"><input id="roomTitle" maxlength="120" value="Aventura de Lisboa e Açores" aria-label="Título da aventura"><button id="createBtn">Criar aventura</button></div>
 <div class="row" style="margin-top:12px"><input id="inviteInput" maxlength="12" placeholder="Código de convite" aria-label="Código de convite"><button id="joinBtn" class="secondary">Entrar por convite</button></div>
@@ -55,7 +60,7 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 <label>Equipamento e notas<textarea id="charNotes" rows="4">Cajado e livro de feitiços</textarea></label>
 <button id="charSave">Guardar ficha</button>
 <hr style="border:0;border-top:1px solid #405068;margin:20px 0">
-<h2>Participantes</h2><div id="playersList" class="muted"></div>
+<h2>Participantes</h2><div id="playersList" class="muted"></div><h2>Companheiros IA</h2><div id="companionsList" class="muted"></div>
 </section>
 <section><div class="bar"><h2>História partilhada</h2><button class="secondary" id="refreshBtn">Atualizar</button></div>
 <div id="messages" class="messages"></div>
@@ -71,6 +76,7 @@ import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 const $=id=>document.getElementById(id);
 let sb,user,room,channel,knownMessages=[],players=[],isHost=false;
 let turn=null,turnMembers=[],myAction=null,turnBusy=false,autoAttempt=-1;
+const campaignIntros={veu:'Aventura original nas ruínas de Blackwood e o Véu antigo.',farol:'Aventura original sobre o farol apagado e os navios desaparecidos de Cinzabruma.',estrelas:'Aventura original no observatório de Serath e mapas de um céu impossível.'};
 let pollHandle=null;
 const status=m=>$('status').textContent=m;
 $('gameCode').value=sessionStorage.getItem('dnd-game-code')||'';
@@ -97,11 +103,11 @@ async function showLobby(){show('lobbySection',true);show('roomSection',false);
  for(const r of data){const b=document.createElement('button');b.className='secondary';b.style.margin='5px';b.textContent=r.title;b.onclick=()=>openRoom(r.id);dest.append(b)}
 }
 function name(){const n=$('displayName').value.trim();if(n.length<1||n.length>60)throw Error('Escreve o teu nome de jogador (até 60 caracteres).');return n}
-$('createBtn').onclick=async()=>{setBusy('createBtn',true);try{const id=await query(await sb.rpc('create_game_room',{p_title:$('roomTitle').value.trim(),p_player_name:name()}));await openRoom(id)}catch(e){err(e)}finally{setBusy('createBtn',false)}};
+$('createBtn').onclick=async()=>{setBusy('createBtn',true);try{const id=await query(await sb.rpc('create_campaign_room',{p_title:$('roomTitle').value.trim(),p_player_name:name(),p_campaign_id:$('campaignChoice').value,p_campaign_intro:campaignIntros[$('campaignChoice').value]}));await openRoom(id)}catch(e){err(e)}finally{setBusy('createBtn',false)}};
 $('joinBtn').onclick=async()=>{setBusy('joinBtn',true);try{const id=await query(await sb.rpc('join_game_room',{p_invite_code:$('inviteInput').value.trim().toUpperCase(),p_player_name:name()}));await openRoom(id)}catch(e){err(e)}finally{setBusy('joinBtn',false)}};
 async function openRoom(id){
  await leaveRoom();const data=await query(await sb.from('game_rooms').select('*').eq('id',id).single());room=data;isHost=data.owner_id===user.id;
- $('roomTitleView').textContent=data.title;$('inviteView').textContent=data.invite_code;show('lobbySection',false);show('roomSection',true);show('gmBtn',isHost);
+ $('roomTitleView').textContent=data.title+' · '+({veu:'O Limiar do Véu',farol:'O Farol de Cinzabruma',estrelas:'As Chaves das Estrelas'}[data.campaign_id]||'Campanha');$('inviteView').textContent=data.invite_code;show('lobbySection',false);show('roomSection',true);show('gmBtn',isHost);
  const chars=await query(await sb.from('game_characters').select('*').eq('room_id',id).eq('user_id',user.id).maybeSingle());
  if(chars){const sh=chars.sheet||{};$('charName').value=chars.name;$('charRace').value=sh.raca||'';$('charClass').value=sh.classe||'';$('charLevel').value=sh.nivel||1;$('charHp').value=sh.pv??8;$('charNotes').value=sh.equipamento||''}
  await refresh();
@@ -137,6 +143,9 @@ async function refresh(){
  if(room?.id!==id)return;
  knownMessages=await query(m);players=await query(p);turn=await query(t);
  $('playersList').textContent=players.map(x=>x.display_name).join(' · ');
+ const companions=await query(await sb.from('game_companions').select('name,archetype').eq('room_id',id));
+ $('companionsList').textContent=companions.length?companions.map(x=>x.name+' — '+x.archetype).join(' · '):'Sem companheiros configurados nesta sala.';
+
  const dest=$('messages');dest.replaceChildren();
  if(!knownMessages.length)dest.textContent='A aventura ainda não começou. Quando todos entrarem, o anfitrião inicia o primeiro turno.';
  for(const msg of knownMessages){
