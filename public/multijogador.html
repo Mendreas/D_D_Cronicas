@@ -20,7 +20,7 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 .who{color:#eec78b;font-size:12px;font-weight:700;margin-bottom:6px}.muted{color:#b4c2d1;font-size:13px}#status{color:#f2c78c;min-height:24px}
 [hidden]{display:none!important} .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 @media(max-width:770px){.grid{grid-template-columns:1fr}.messages{height:42vh}main{padding:12px}section{padding:15px}}
-</style></head>
+#roomArt{width:100%;max-height:360px;object-fit:cover;display:none;border-radius:9px;border:1px solid #60758b}#roomArtNote{color:#afc4d7;font-size:12px;padding:8px 0} </style></head>
 <body><header><h1>✦ Crónicas do Véu</h1><small>Modo multijogador · Lisboa ↔ Açores · <a href="/">Voltar ao jogo individual</a></small></header>
 <main>
 <div id="status" role="status">A iniciar ligação segura...</div>
@@ -62,7 +62,7 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 <hr style="border:0;border-top:1px solid #405068;margin:20px 0">
 <h2>Participantes</h2><div id="playersList" class="muted"></div><h2>Companheiros IA</h2><div id="companionsList" class="muted"></div>
 </section>
-<section><div class="bar"><h2>História partilhada</h2><button class="secondary" id="refreshBtn">Atualizar</button></div>
+<section><div class="bar"><h2>História partilhada</h2><button class="secondary" id="refreshBtn">Atualizar</button></div><img id="roomArt" alt="Ilustração guardada do local atual"><div id="roomArtNote" aria-live="polite">A primeira imagem será criada automaticamente quando o Mestre apresentar a cena.</div>
 <div id="messages" class="messages"></div>
 <label>A tua ação<textarea id="action" rows="3" placeholder="Examino a passagem com atenção..."></textarea></label>
 <div class="row"><button id="sendBtn">Confirmar decisão</button><button id="gmBtn" class="secondary" hidden>🐉 Resolver turno agora</button></div>
@@ -77,7 +77,7 @@ const $=id=>document.getElementById(id);
 let sb,user,room,channel,knownMessages=[],players=[],isHost=false;
 let turn=null,turnMembers=[],myAction=null,turnBusy=false,autoAttempt=-1;
 const campaignIntros={veu:'Aventura original nas ruínas de Blackwood e o Véu antigo.',farol:'Aventura original sobre o farol apagado e os navios desaparecidos de Cinzabruma.',estrelas:'Aventura original no observatório de Serath e mapas de um céu impossível.'};
-let pollHandle=null;
+let pollHandle=null,artBusy=false,lastSceneUrl='',lastSceneMessage='';
 const status=m=>$('status').textContent=m;
 $('gameCode').value=sessionStorage.getItem('dnd-game-code')||'';
 $('codeSave').onclick=()=>{sessionStorage.setItem('dnd-game-code',$('gameCode').value.trim());status('Código guardado para esta sessão.');};
@@ -123,7 +123,8 @@ async function openRoom(id){
 async function leaveRoom(){
  if(pollHandle){clearInterval(pollHandle);pollHandle=null}
  if(channel&&sb){await sb.removeChannel(channel);channel=null}
- room=null;turn=null;autoAttempt=-1;
+ room=null;turn=null;autoAttempt=-1;lastSceneUrl='';lastSceneMessage='';
+ $('roomArt').style.display='none';
 }
 $('leaveBtn').onclick=async()=>{await leaveRoom();await showLobby()};
 $('copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(room.invite_code);status('Código de convite copiado.')}catch(e){err(e)}};
@@ -152,9 +153,17 @@ async function refresh(){
   const div=document.createElement('div');div.className='msg'+(msg.role==='gm'?' gm':'');
   const who=document.createElement('div');who.className='who';
   who.textContent=msg.role==='gm'?'Mestre de Jogo':players.find(p=>p.user_id===msg.author_id)?.display_name||'Jogador';
-  const body=document.createElement('div');body.textContent=msg.content;div.append(who,body);dest.append(div)
+  const body=document.createElement('div');body.textContent=msg.role==='gm'?msg.content.replace(/\[LOCAL:[a-z0-9-]+\]/gi,'').trim():msg.content;div.append(who,body);dest.append(div)
  }
  dest.scrollTop=dest.scrollHeight;
+ const latestGM=[...knownMessages].reverse().find(m=>m.role==='gm');
+ if(latestGM&&latestGM.id!==lastSceneMessage){
+  lastSceneMessage=latestGM.id;
+  lastSceneUrl='';
+  $('roomArt').style.display='none';
+  $('roomArtNote').textContent='A preparar a ilustração do local…';
+ }
+ if(latestGM&&!artBusy&&!lastSceneUrl)void refreshSceneArt();
  if(!turn){
   turnMembers=[];myAction=null;
   $('turnHeading').textContent='Sala de espera';
@@ -204,6 +213,29 @@ $('sendBtn').onclick=async()=>{if(!room||!turn)return;
    status('Decisão confirmada. Podes sair: a aventura fica guardada à espera dos restantes.');
  }catch(e){err(e)}finally{setBusy('sendBtn',false)}
 };
+async function refreshSceneArt(){
+ if(!room||artBusy||!knownMessages.some(x=>x.role==='gm'))return;
+ const id=room.id;artBusy=true;
+ try{
+  const token=(await sb.auth.getSession()).data.session?.access_token;
+  const code=sessionStorage.getItem('dnd-game-code')||'';
+  if(!token||!code){$('roomArtNote').textContent='Confirma o código de acesso na área das salas para carregar a imagem.';return}
+  const res=await fetch('/.netlify/functions/room-art',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'x-game-code':code},
+    body:JSON.stringify({room_id:id})
+  });
+  const data=await res.json();
+  if(!res.ok)throw Error(data.error||'Erro ao obter a ilustração');
+  if(room?.id!==id)return;
+  if(data.status==='ready'&&data.url){
+    lastSceneUrl=data.url;$('roomArt').src=data.url;$('roomArt').style.display='block';
+    $('roomArtNote').textContent='Local: '+data.location.replaceAll('-',' ')+' · imagem guardada para futuras visitas';
+  }else if(data.status==='pending')$('roomArtNote').textContent='A gerar a ilustração na nuvem. Será partilhada pelos jogadores.';
+ }catch(e){$('roomArtNote').textContent='Imagem indisponível neste momento: '+e.message}
+ finally{artBusy=false}
+}
+
 async function resolveTurn(automatic=false){
  if(!room||!turn||turnBusy)return;
  const roomId=room.id;turnBusy=true;setBusy('gmBtn',true);
