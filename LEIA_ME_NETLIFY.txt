@@ -1,0 +1,28 @@
+CRONICAS DO VEU - VERSAO NETLIFY
+
+ATENCAO: NAO coloques a tua OPENAI_API_KEY nos ficheiros.
+
+PUBLICACAO RECOMENDADA (GITHUB + NETLIFY)
+1. Extrai esta pasta no teu PC.
+2. No GitHub, cria um repositorio PRIVADO e carrega estes ficheiros e pastas para a raiz.
+3. No Netlify: Add new project > Import an existing project > GitHub > escolhe o repositorio.
+4. A configuracao netlify.toml publica public/ e compila netlify/functions/.
+5. No Netlify: Project configuration > Environment variables > Add a variable:
+   OPENAI_API_KEY = a tua chave privada da OpenAI
+   GAME_ACCESS_CODE = um codigo de acesso longo e dificil de adivinhar (idealmente 24+ caracteres aleatorios)
+   Opcional: IMAGE_MODEL = gpt-image-2 (modelo usado na ultima versao PC)
+6. Faz novo deploy depois de configurar as variaveis para garantir que estao ativas.
+7. Abre o site e introduz o GAME_ACCESS_CODE no campo do topo, depois clica Confirmar codigo.
+8. Inicia a aventura, depois usa Gerar ilustracao da cena.
+
+NOTAS IMPORTANTES
+- A tua chave OpenAI NUNCA deve ser inserida em HTML/JavaScript publico.
+- O codigo GAME_ACCESS_CODE e enviado ao servidor em cada pedido; usa HTTPS e nao o partilhes.
+- Esta protecao por codigo e adequada APENAS para testes pessoais. Para acesso publico/multiutilizador: login real + quotas/rate limits.
+- O Netlify limita funcoes sincronas a 60 segundos. Imagens que demorem mais podem falhar.
+- O Netlify limita a resposta buffer a 6MB; imagens grandes tambem podem falhar.
+- A aventura e as imagens sao guardadas no browser atual via localStorage/IndexedDB. Nao sincronizam entre iPad e PC.
+- A aventura local da versao Windows NAO e importada automaticamente.
+- O antigo server.py e os ficheiros .bat sao apenas para a versao Windows e nao devem ir ao Netlify.
+- Cada geracao de texto e imagem consome creditos da API.
+- Nao testado com uma chave real da OpenAI nem em conta Netlify de producao.
