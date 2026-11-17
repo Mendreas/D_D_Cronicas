@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="pt-PT">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crónicas do Véu — Aventura Solo</title>
+<style>
+:root{color-scheme:dark;--bg:#101723;--panel:#1b2635;--line:#435368;--gold:#e4bc77;--muted:#b5c5d5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0,#29354b,var(--bg) 72%);color:#f5ebdd;font:15px/1.6 system-ui;min-height:100vh}
+button{background:#b58e54;color:#101722;border:1px solid #b58e54;border-radius:8px;cursor:pointer;padding:11px 16px;font:600 14px system-ui}
+button.secondary{background:transparent;color:var(--gold)}button:disabled{opacity:.5;cursor:wait}
+a{color:var(--gold)}header{min-height:75px;border-bottom:1px solid #3c4b5e;background:#141c29;padding:12px max(20px,calc((100vw - 1480px)/2));display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand{font:700 23px Georgia,serif;color:var(--gold)}.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.nav button{font-size:13px;padding:9px 11px}
+#campaignTitle{font-size:12px;color:var(--muted)}main{max-width:1480px;margin:auto;padding:18px 22px 28px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.bar h1{margin:0;color:var(--gold);font:700 25px Georgia,serif}.bar small{color:var(--muted)}
+.panels{display:grid;grid-template-columns:1.08fr .92fr;gap:17px;align-items:stretch}
+.panel{border:1px solid var(--line);border-radius:13px;background:var(--panel);min-width:0;overflow:hidden}
+.panel-head{padding:12px 17px;color:var(--gold);font:700 17px Georgia,serif;border-bottom:1px solid #37465b;display:flex;align-items:center;justify-content:space-between;gap:10px}
+#chat{height:min(61vh,650px);min-height:370px;overflow-y:auto;padding:14px}
+.message{border:1px solid #40506a;border-radius:11px;background:#253143;padding:14px 18px;margin-bottom:13px;line-height:1.7;white-space:pre-wrap}
+.message.user{background:#2a2c36;border-color:#665944}
+.speaker{font:700 12px system-ui;color:var(--gold);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px}
+#artBox{height:min(61vh,650px);min-height:370px;display:flex;align-items:center;justify-content:center;background:#101b2a;overflow:hidden}
+#artBox img{width:100%;height:100%;object-fit:cover}.placeholder{padding:25px;text-align:center;color:var(--muted);max-width:350px;line-height:1.8}
+.action-panel{padding:17px 18px;margin-top:17px}.action-panel label{display:block;margin-bottom:8px;color:var(--gold);font-weight:650}
+.action-row{display:flex;gap:12px;align-items:stretch}.action-row textarea{flex:1;min-height:90px;max-height:230px}
+textarea,input,select{font:15px system-ui;color:#fff;background:#0e1724;border:1px solid #4b5d72;border-radius:8px;padding:11px;min-width:0}
+textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
+#notice{color:#e8c58c;font-size:13px;min-height:24px;margin:12px 0 0}.helper{color:var(--muted);font-size:12px}.helper button{font-size:12px;padding:7px 10px}
+.access{border:1px solid #645640;border-radius:10px;background:#292b32;padding:11px 16px;margin-bottom:14px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.access label{font-size:13px;color:#eac98e}.access input{flex:1;min-width:170px}
+.modal-backdrop{position:fixed;inset:0;background:#000b;z-index:50;display:flex;justify-content:center;align-items:center;padding:18px}
+.modal{width:min(750px,100%);max-height:88vh;overflow-y:auto;background:#1b2737;border:1px solid #786443;border-radius:15px;padding:23px;box-shadow:0 25px 80px #0009}
+.modal-head{display:flex;align-items:center;justify-content:space-between}.modal h2{font:700 25px Georgia,serif;color:var(--gold);margin:0 0 12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{border:1px solid #42556d;border-radius:8px;background:#111e2d;padding:10px;text-align:center}
+.stat small{display:block;color:var(--muted)}.stat strong{font-size:20px;color:var(--gold)}
+.field{display:grid;gap:5px;margin:10px 0}.field label{font-size:13px;color:var(--muted)}.field input,.field textarea{width:100%}
+.pills{display:flex;flex-wrap:wrap;gap:7px}.pill{border:1px solid #5b6e80;background:#263648;border-radius:8px;padding:8px 10px}
+.route{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:15px 0}.route span{padding:10px;border:1px solid #53687f;border-radius:8px;background:#25384e}
+.local-map{height:235px;border:1px dashed #718199;border-radius:13px;position:relative;background:radial-gradient(circle at center,#31445a,#121e2d 74%);display:grid;place-items:center;text-align:center}
+.local-map::before,.local-map::after{content:'?';position:absolute;color:#aabed3;font-size:23px;top:19%;left:20%}.local-map::after{top:67%;left:75%}
+.local-map span{background:#b69053;color:#121721;border-radius:15px;padding:16px 20px;font-weight:bold;max-width:70%}
+[hidden]{display:none!important}
+@media(max-width:790px){header{align-items:flex-start}.panels{grid-template-columns:1fr}#chat{height:48vh;min-height:300px}#artBox{height:290px;min-height:290px}.action-row{flex-direction:column}.action-row button{min-height:45px}.stats{grid-template-columns:repeat(2,1fr)}}
+</style></head>
+<body>
+<header><div class="brand">✦ Crónicas do Véu</div>
+<nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa-local">Mapa local</button><button class="secondary" data-view="mapa-geral">Mapa geral</button><button id="saveBtn">Guardar</button></nav>
+<div id="campaignTitle">Aventura solo</div></header>
+<main>
+<div id="accessBar" class="access" hidden>
+<label for="access">Código de acesso ao jogo:</label><input type="password" id="access" autocomplete="off" placeholder="Código privado configurado no Netlify">
+<button id="accessSave">Entrar na aventura</button>
+</div>
+<div class="bar"><h1 id="sceneTitle">A tua aventura</h1><small id="partyStatus">A preparar o grupo...</small></div>
+<div class="panels">
+<section class="panel" aria-label="Narrativa do Mestre de Jogo"><div class="panel-head">O Mestre de Jogo <span id="chapterIndicator" style="font:12px system-ui;color:#bdcad9">Capítulo I</span></div>
+<div id="chat" aria-live="polite"></div></section>
+<section class="panel" aria-label="Ilustração do local"><div class="panel-head"><span id="locationTitle">Local atual</span><span class="helper">Imagem do cenário</span></div>
+<div id="artBox"><div class="placeholder">O cenário será ilustrado automaticamente quando o Mestre apresentar o local.</div></div></section>
+</div>
+<section class="panel action-panel"><label for="action">O que fazes a seguir?</label>
+<div class="action-row"><textarea id="action" placeholder="Descreve a tua ação: examino a porta, pergunto a Kael, lanço um feitiço..."></textarea>
+<button id="send" disabled>Enviar ação</button></div>
+<div class="bar" style="margin:12px 0 0"><span class="helper">Ctrl + Enter para enviar · A aventura guarda-se automaticamente após cada cena.</span><div class="nav"><button id="roll" class="secondary">🎲 d20</button><span id="dice" class="helper"></span><button id="retryStart" class="secondary" hidden>Tentar iniciar novamente</button><button id="retryImage" class="secondary" hidden>Tentar imagem novamente</button></div></div>
+<div id="notice" role="status"></div></section>
+</main>
+<div id="modalBackdrop" class="modal-backdrop" hidden role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button class="secondary" id="modalClose">Fechar ✕</button></div><div id="modalBody"></div></div></div>
+<script type="module">
+import {abilityCheck,proficiencyBonus,modifier} from '/rules-2024.mjs';
+const $=id=>document.getElementById(id);
+const saveId=new URLSearchParams(location.search).get('save');
+const saveKey=saveId?'cv-save-'+saveId:null;
+let game=saveKey?JSON.parse(localStorage.getItem(saveKey)||'null'):null;
+let messages=game?.messages||[];
+let scene=game?.currentLocation||'';
+let artwork='',busy=false,artBusy=false,firstAttempted=false;
+let visited=Array.isArray(game?.visitedLocations)?game.visitedLocations:[];
+if(scene&&!visited.includes(scene))visited.push(scene);
+const char=game?.character||null;
+if(!game||!char){location.replace('/personagens.html')}
+const code=()=>sessionStorage.getItem('dnd-game-code')||'';
+$('access').value=code();
+$('campaignTitle').textContent=game?.campaign||'Aventura solo';
+$('sceneTitle').textContent=game?.campaign||'Aventura';
+$('partyStatus').textContent=[char?.nome||'Jogador',...(char?.companheiros||[]).map(c=>c.nome)].join(' · ');
+const placeName=s=>(s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
+function setNotice(t){$('notice').textContent=t}
+function showAccess(){ $('accessBar').hidden=!!code();if(!code())setNotice('Introduz o teu código de acesso para o Mestre iniciar automaticamente a aventura.')}
+function saveGame(announce=false){
+ game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.updated=Date.now();
+ localStorage.setItem(saveKey,JSON.stringify(game));
+ const profileId=game.characterId||char.id;
+ if(profileId){
+  const pkey='cv-character-'+profileId;
+  const existing=JSON.parse(localStorage.getItem(pkey)||'null');
+  if(existing){
+   const next={...existing,equipamento:char.equipamento,personalidade:char.personalidade,
+     historia:char.historia,updated:Date.now()};
+   if(Number(char.nivel||1)>Number(existing.nivel||1)){
+     next.nivel=char.nivel;next.pvMax=char.pvMax;next.pv=char.pv;
+   }
+   localStorage.setItem(pkey,JSON.stringify(next));
+  }
+ }
+ if(announce)setNotice('Aventura guardada neste navegador.');
+}
+function render(){
+ const root=$('chat');root.replaceChildren();
+ const visible=messages.filter(m=>!m.internal);
+ if(!visible.length){const e=document.createElement('div');e.className='message';e.innerHTML='<div class="speaker">Mestre de Jogo</div>A preparar o prólogo da campanha…';root.append(e)}
+ for(const m of visible){
+  const row=document.createElement('div');row.className='message '+(m.role==='user'?'user':'assistant');
+  const sp=document.createElement('div');sp.className='speaker';sp.textContent=m.role==='user'?'A tua ação':'Mestre de Jogo';
+  const text=document.createElement('div');text.textContent=m.content;row.append(sp,text);root.append(row);
+ }
+ root.scrollTop=root.scrollHeight;
+ $('send').disabled=busy||!code()||!messages.some(m=>m.role==='assistant');
+ $('locationTitle').textContent='Local: '+placeName(scene);
+}
+function displayImage(src){
+ const box=$('artBox');box.replaceChildren();
+ if(!src){const p=document.createElement('div');p.className='placeholder';p.textContent='A preparar a ilustração deste local…';box.append(p);return}
+ const img=document.createElement('img');img.src=src;img.alt='Ilustração do local '+placeName(scene);box.append(img);
+}
+async function request(path,data){
+ if(!code())throw Error('Falta o código de acesso.');
+ let r;
+ try{r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','x-game-code':code()},body:JSON.stringify(data)})}
+ catch(e){throw Error('Não foi possível comunicar com o Netlify: '+e.message)}
+ const v=await r.json().catch(()=>{throw Error('Resposta inválida do servidor.')});
+ if(!r.ok)throw Error(v.error||'Erro de comunicação '+r.status);
+ return v;
+}
+function openDB(){return new Promise((resolve,reject)=>{const q=indexedDB.open('dnd-cronicas-images',1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains('images'))q.result.createObjectStore('images')};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
+async function imageCache(key,value){
+ const db=await openDB();return new Promise((resolve,reject)=>{
+  const tx=db.transaction('images',value===undefined?'readonly':'readwrite');
+  const obj=tx.objectStore('images');const q=value===undefined?obj.get(key):obj.put(value,key);
+  q.onsuccess=()=>{if(value===undefined)resolve(q.result||'')};
+  tx.oncomplete=()=>{db.close();if(value!==undefined)resolve(true)};
+  tx.onerror=()=>{db.close();reject(tx.error)};
+ })}
+function imageKey(locationKey){return saveId+':'+locationKey}
+async function illustrate(locationKey,force=false){
+ if(!locationKey||artBusy)return;
+ artBusy=true;$('retryImage').hidden=true;
+ const token=imageKey(locationKey);
+ try{
+  const cached=force?'':await imageCache(token);
+  if(cached){if(scene===locationKey){artwork=cached;displayImage(cached)}return}
+  if(scene===locationKey){artwork='';displayImage('');setNotice('O Mestre está a ilustrar '+placeName(locationKey)+'…')}
+  const result=await request('/api/image',{character:char,messages,location:locationKey});
+  if(!result.image_data||!result.image_data.startsWith('data:image/'))throw Error('A API não devolveu uma imagem válida.');
+  await imageCache(token,result.image_data);
+  if(scene===locationKey){artwork=result.image_data;displayImage(artwork);setNotice('Imagem do local guardada. Será reutilizada quando regressares.')}
+ }catch(e){if(scene===locationKey){$('retryImage').hidden=false;setNotice('A imagem não foi gerada: '+e.message)}}
+ finally{artBusy=false}
+}
+async function loadSceneImage(){
+ artwork='';displayImage('');
+ if(!scene)return;
+ try{const cached=await imageCache(imageKey(scene));if(cached){artwork=cached;displayImage(cached);$('retryImage').hidden=true;return}}
+ catch(e){setNotice('O armazenamento de imagens não está disponível: '+e.message)}
+ void illustrate(scene);
+}
+function updatedLocation(id){
+ const next=String(id||scene||'local-inicial').toLowerCase();
+ if(next!==scene){scene=next;if(!visited.includes(scene))visited.push(scene);void loadSceneImage()}
+ else if(!artwork&&!artBusy)void loadSceneImage();
+ $('locationTitle').textContent='Local: '+placeName(scene);
+}
+async function runTurn(action,{initial=false}={}){
+ if(busy)return;
+ busy=true;$('send').disabled=true;
+ const previous=messages.slice();
+ messages.push({role:'user',content:action,internal:initial});
+ render();setNotice(initial?'O Mestre está a preparar o prólogo…':'O Mestre está a responder à tua ação…');
+ try{
+  const result=await request('/api/story',{character:char,messages,campaign:game.campaign,intro:game.intro,lastLocation:scene});
+  if(!result.text)throw Error('O Mestre não devolveu uma narrativa.');
+  messages.push({role:'assistant',content:result.text});
+  updatedLocation(result.location);
+  saveGame();render();setNotice('Cena concluída. Podes decidir a próxima ação.');
+ }catch(e){messages=previous;render();setNotice('Não foi possível continuar: '+e.message+(initial?' Clica em Tentar iniciar para repetir.':''));if(initial){firstAttempted=false;$('retryStart').hidden=false}}
+ finally{busy=false;render()}
+}
+async function begin(){
+ if(!code()){showAccess();return}
+ if(messages.some(m=>m.role==='assistant')||busy)return;
+ if(firstAttempted)return;
+ firstAttempted=true;$('retryStart').hidden=true;
+ const intro=game.intro||'Apresenta o início de uma aventura original, com o grupo de quatro personagens reunido.';
+ await runTurn('Apresenta a primeira cena da campanha: '+intro+'. O meu grupo está comigo. Não escolhas a minha primeira ação.',{initial:true});
+}
+$('send').onclick=()=>{const action=$('action').value.trim();if(!action||busy)return;$('action').value='';void runTurn(action)};
+$('action').addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();$('send').click()}});
+$('accessSave').onclick=()=>{
+ const value=$('access').value.trim();
+ if(!value){setNotice('Escreve o código de acesso.');return}
+ sessionStorage.setItem('dnd-game-code',value);showAccess();render();void begin();
+};
+$('saveBtn').onclick=()=>saveGame(true);
+$('retryImage').onclick=()=>{if(scene)void illustrate(scene,true)};
+$('retryStart').onclick=()=>{firstAttempted=false;$('retryStart').hidden=true;void begin()};
+$('roll').onclick=()=>{const r=abilityCheck(char,'int');$('dice').textContent='d20 '+r.die+' '+(r.bonus>=0?'+':'')+r.bonus+' = '+r.total};
+const backdrop=$('modalBackdrop');
+$('modalClose').onclick=()=>backdrop.hidden=true;
+backdrop.onclick=e=>{if(e.target===backdrop)backdrop.hidden=true};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')backdrop.hidden=true});
+function make(tag,text,cls=''){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e}
+function openModal(title,renderer){$('modalTitle').textContent=title;const body=$('modalBody');body.replaceChildren();renderer(body);backdrop.hidden=false}
+function field(parent,labelText,value,editable=false,onChange=null){
+ const wrap=make('div',undefined,'field');wrap.append(make('label',labelText));
+ const i=editable?document.createElement('textarea'):make('p',value||'—');
+ if(editable){i.rows=5;i.value=value||'';i.onchange=()=>{if(onChange)onChange(i.value)}}wrap.append(i);parent.append(wrap);
+}
+function showSheet(){
+ openModal('Ficha de '+(char.nome||'Personagem'),root=>{
+  root.append(make('p',char.raca+' · '+char.classe+' · Nível '+(char.nivel||1)+' · '+char.antecedente));
+  root.append(make('p','PV '+(char.pv??'?')+'/'+(char.pvMax??'?')+' · Bónus de proficiência +'+proficiencyBonus(char.nivel||1)));
+  const grid=make('div',undefined,'stats');
+  const abilities={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
+  for(const [code,name] of Object.entries(abilities)){const block=make('div',undefined,'stat'),score=Number(char.atributos?.[code]||10),mod=modifier(score);block.append(make('small',name),make('strong',score+' ('+(mod>=0?'+':'')+mod+')'));grid.append(block)}
+  root.append(grid);field(root,'Personalidade',char.personalidade);field(root,'História',char.historia);
+  root.append(make('h3','Companheiros IA'));
+  for(const ally of char.companheiros||[])root.append(make('div',(ally.nome||'Aliado')+' · '+ally.classe+' · '+ally.papel,'pill'));
+  root.append(make('p','Ficha de regras ainda em desenvolvimento. A progressão automática e o combate SRD completo não estão implementados.','helper'));
+ })
+}
+function showInventory(){
+ openModal('Inventário',root=>{
+  root.append(make('p','Equipamento e notas da personagem. O texto é guardado na aventura e na ficha permanente.'));
+  field(root,'Equipamento',char.equipamento||'',true,v=>{
+   char.equipamento=v;saveGame();setNotice('Inventário atualizado.');
+  });
+  root.append(make('p','Peso transportado, moedas e itens mágicos serão estruturados na próxima fase.','helper'));
+ })
+}
+function showLocalMap(){
+ openModal('Mapa local — '+placeName(scene),root=>{
+  root.append(make('p','Mapa esquemático de exploração. Não representa posições ou distâncias exatas.'));
+  const map=make('div',undefined,'local-map');
+  map.append(make('span',placeName(scene)||'A descobrir'));root.append(map);
+  root.append(make('p','O Mestre ainda não registou saídas e pontos de interesse estruturados. Essas ligações serão acrescentadas quando o motor de exploração estiver concluído.','helper'));
+ })
+}
+function showWorldMap(){
+ openModal('Mapa geral da campanha',root=>{
+  root.append(make('p','Locais visitados por ordem de descoberta. As ligações não representam distâncias geográficas.'));
+  const path=make('div',undefined,'route');
+  for(let i=0;i<visited.length;i++){if(i)path.append(make('span','→'));path.append(make('span',placeName(visited[i])))}
+  if(!visited.length)path.append(make('p','Ainda não foram descobertos locais.'));
+  root.append(path);root.append(make('p','Um mapa geográfico completo com deslocações será desenvolvido posteriormente.','helper'));
+ })
+}
+for(const btn of document.querySelectorAll('[data-view]')){
+ btn.onclick=()=>{
+  const type=btn.dataset.view;
+  if(type==='ficha')showSheet();
+  else if(type==='inventario')showInventory();
+  else if(type==='mapa-local')showLocalMap();
+  else if(type==='mapa-geral')showWorldMap();
+ }
+}
+async function init(){
+ render();showAccess();
+ if(!messages.some(x=>x.role==='assistant')){
+   if(code())void begin();
+ }else if(scene){await loadSceneImage()}
+}
+void init();
+</script>
+</body></html>

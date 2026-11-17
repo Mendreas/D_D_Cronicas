@@ -1,0 +1,54 @@
+<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crónicas do Véu — Personagem</title><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#2b3547,#10151e);color:#f3eadc;font:15px/1.5 system-ui;min-height:100vh}main{max-width:1000px;margin:auto;padding:25px}
+h1,h2{font-family:Georgia,serif;color:#e6bc79}h1{font-size:37px}.panel{background:#1c2533;border:1px solid #44556b;border-radius:14px;padding:22px;margin:16px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}label{font-size:13px;color:#bacbda;display:block}
+input,select,textarea{width:100%;background:#0c1520;color:#fff;border:1px solid #586a7f;border-radius:8px;padding:11px;font:15px system-ui;margin-top:4px}
+button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8px;padding:12px 20px;font-weight:bold;cursor:pointer}a{color:#e6bf85}
+.abilities{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.abilities label{text-align:center}
+.notice{color:#e3c28c}.muted{color:#bbc9da;font-size:13px}@media(max-width:650px){.grid,.abilities{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style></head><body><main><a href="/personagens.html">← Personagens</a><h1>Criar personagem</h1>
+<p class="muted">Primeira versão do criador SRD 5.2.1: atributos por array padrão, origem, espécie, classe e ficha inicial. As opções especiais, perícias e magias detalhadas serão progressivamente integradas e verificadas contra o SRD.</p>
+<div class="panel"><h2 id="campaignTitle">Identidade da personagem</h2><div class="grid">
+<label>Nome<input id="name" value="Mendreas" maxlength="80"></label><label>Espécie<select id="species"><option>Humano</option><option selected>Elfo</option><option>Anão</option><option>Halfling</option><option>Draconato</option><option>Gnomo</option><option>Golias</option><option>Orc</option><option>Tiefling</option></select></label>
+<label>Classe<select id="cls"><option>Barbarian</option><option>Bard</option><option>Cleric</option><option>Druid</option><option>Fighter</option><option>Monk</option><option>Paladin</option><option>Ranger</option><option>Rogue</option><option>Sorcerer</option><option>Warlock</option><option selected>Wizard</option></select></label>
+<label>Antecedente<select id="background"><option>Acólito</option><option>Artesão</option><option>Artista</option><option>Charlatão</option><option>Criminoso</option><option>Ermitão</option><option>Fazendeiro</option><option>Guarda</option><option>Guia</option><option>Marinheiro</option><option selected>Sábio</option><option>Soldado</option><option>Mercador</option><option>Nobre</option><option>Escriba</option><option>Viajante</option></select></label>
+</div></div>
+<div class="panel"><h2>Atributos</h2><p class="muted">Distribui os valores 15, 14, 13, 12, 10 e 8 (antes dos bónus da origem). O sistema valida que cada valor é usado uma única vez.</p><div class="abilities" id="abilities"></div><p class="notice" id="statStatus"></p></div>
+<div class="panel"><h2>Identidade e equipamento</h2><label>Personalidade<textarea id="personality" rows="2">Positivo, carismático e curioso, procura desvendar mistérios.</textarea></label><label>História pessoal<textarea id="history" rows="2">Um mago errante interessado em manuscritos antigos e segredos esquecidos.</textarea></label><label>Equipamento<textarea id="equipment" rows="2">Cajado, livro de feitiços, manto de viagem, mochila</textarea></label><p class="muted">Na campanha solo, o teu grupo será completado por três companheiros IA. Os companheiros pertencem ao grupo de aventura, não à ficha permanente da tua personagem.</p><p class="muted">Bónus de atributos e talentos de origem serão aplicados numa etapa adicional. Esta ficha inicial não substitui ainda uma ficha SRD integral.</p><button id="start">Guardar personagem e escolher campanha</button><p id="notice" class="notice"></p></div>
+</main><script>
+const $=id=>document.getElementById(id);
+const editId=new URLSearchParams(location.search).get('editar');
+const existing=editId?JSON.parse(localStorage.getItem('cv-character-'+editId)||'null'):null;
+if(existing){
+ $('name').value=existing.nome||'';
+ $('species').value=existing.raca||'Elfo';
+ $('cls').value=existing.classe||'Wizard';
+ $('background').value=existing.antecedente||'Sábio';
+ $('personality').value=existing.personalidade||'';
+ $('history').value=existing.historia||'';
+ $('equipment').value=existing.equipamento||'';
+ $('start').textContent='Guardar alterações e escolher campanha';
+}
+const abilities=['Força','Destreza','Constituição','Inteligência','Sabedoria','Carisma'];const ids=['str','dex','con','int','wis','cha'];
+const startValues=ids.map((k,i)=>existing?.atributos?.[k]??[8,13,12,15,10,14][i]);
+for(let i=0;i<ids.length;i++){const label=document.createElement('label');label.textContent=abilities[i];const sel=document.createElement('select');sel.id=ids[i];for(const n of [8,10,12,13,14,15]){const opt=document.createElement('option');opt.value=n;opt.textContent=n;if(n===startValues[i])opt.selected=true;sel.append(opt)}sel.onchange=check;label.append(sel);$('abilities').append(label)}
+function check(){const vals=ids.map(x=>Number($(x).value));const valid=new Set(vals).size===6;$('statStatus').textContent=valid?'Distribuição válida.':'Cada valor só pode ser utilizado uma vez.';return valid}check();
+$('start').onclick=()=>{
+ if(!check())return;
+ const name=$('name').value.trim();
+ if(!name){$('notice').textContent='Escreve o nome da personagem.';return}
+ const attrs=Object.fromEntries(ids.map(k=>[k,Number($(k).value)]));
+ const hpbase={Barbarian:12,Fighter:10,Paladin:10,Ranger:10,Bard:8,Cleric:8,Druid:8,Monk:8,Rogue:8,Warlock:8,Sorcerer:6,Wizard:6};
+ const hp=Math.max(1,(hpbase[$('cls').value]||8)+Math.floor((attrs.con-10)/2));
+ const charId=editId||crypto.randomUUID();
+ const c={id:charId,nome:name,raca:$('species').value,classe:$('cls').value,antecedente:$('background').value,
+  nivel:existing?.nivel||1,pv:existing?.pv??hp,pvMax:existing?.pvMax??hp,atributos:attrs,
+  personalidade:$('personality').value,historia:$('history').value,equipamento:$('equipment').value,
+  experiencia:existing?.experiencia||0,updated:Date.now()};
+ localStorage.setItem('cv-character-'+charId,JSON.stringify(c));
+ const list=JSON.parse(localStorage.getItem('cv-character-index')||'[]');
+ if(!list.includes(charId)){list.unshift(charId);localStorage.setItem('cv-character-index',JSON.stringify(list))}
+ localStorage.setItem('cv-active-character',charId);
+ location.href='/campanhas.html?personagem='+encodeURIComponent(charId);
+};
+</script></body></html>

@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crónicas do Véu — Multijogador</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10151f;color:#f2e9d9}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#253248,#10151f 75%);min-height:100vh}
+header{padding:18px max(18px,calc((100vw - 1190px)/2));border-bottom:1px solid #515364;background:#151c28}
+h1{margin:0;font:700 26px Georgia,serif;color:#edc681}header small{color:#b2c0cb}
+main{max-width:1190px;margin:auto;padding:22px;display:grid;gap:17px}
+h2{font:700 22px Georgia,serif;color:#e9c481;margin:0 0 12px}
+p{line-height:1.6}a{color:#eecb94}
+section{background:#1b2532;border:1px solid #36485e;border-radius:14px;padding:20px}
+input,textarea{border:1px solid #4e6076;border-radius:8px;background:#0b1520;color:#fff;padding:11px;font:15px system-ui;min-width:0;width:100%}
+label{display:block;font-size:13px;color:#b7c5d4;margin:8px 0}
+button{border:1px solid #b68e4d;background:#b68e4d;color:#141619;padding:10px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:transparent;color:#e9c481}
+button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row>*{flex:1}.row>button{flex:0 0 auto}
+.grid{display:grid;grid-template-columns:310px 1fr;gap:17px}
+.messages{height:54vh;min-height:300px;overflow:auto;border:1px solid #405068;border-radius:10px;padding:12px;background:#121d2a}
+.msg{background:#253446;border:1px solid #40536a;padding:12px;border-radius:9px;margin:10px 0;white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere}.msg.gm{border-color:#9d774a;background:#2b2b32}
+.who{color:#eec78b;font-size:12px;font-weight:700;margin-bottom:6px}.muted{color:#b4c2d1;font-size:13px}#status{color:#f2c78c;min-height:24px}
+[hidden]{display:none!important} .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:770px){.grid{grid-template-columns:1fr}.messages{height:42vh}main{padding:12px}section{padding:15px}}
+#roomArt{width:100%;max-height:360px;object-fit:cover;display:none;border-radius:9px;border:1px solid #60758b}#roomArtNote{color:#afc4d7;font-size:12px;padding:8px 0} </style></head>
+<body><header><h1>✦ Crónicas do Véu</h1><small>Modo multijogador · Lisboa ↔ Açores · <a href="/">Voltar ao jogo individual</a></small></header>
+<main>
+<div id="status" role="status">A iniciar ligação segura...</div>
+<section id="authSection" hidden>
+<h2>Entrar no jogo</h2><p class="muted">Cada jogador utiliza o seu próprio email. Na primeira utilização, seleciona Criar conta e confirma o email enviado pelo Supabase.</p>
+<label>Email<input id="email" type="email" autocomplete="email" placeholder="email@exemplo.pt"></label>
+<label>Palavra-passe<input id="password" type="password" autocomplete="current-password" minlength="12"></label>
+<div class="row"><button id="loginBtn">Entrar</button><button class="secondary" id="signupBtn">Criar conta</button></div>
+</section>
+<div id="appSection" hidden>
+<section class="bar"><div>Ligado como <strong id="userLabel"></strong></div><button class="secondary" id="logoutBtn">Terminar sessão</button></section>
+<section id="lobbySection">
+<h2>1. Escolher personagem</h2>
+<p class="muted">A tua personagem pertence à tua conta, e não à sala. Pode participar em várias campanhas.</p>
+<label>Personagem existente<select id="profileSelect"><option value="">Nova personagem</option></select></label>
+<div class="row">
+<label>Nome<input id="profileName" maxlength="80" value="Mendreas"></label>
+<label>Espécie<select id="profileRace"><option>Elfo</option><option>Humano</option><option>Anão</option><option>Halfling</option><option>Draconato</option><option>Gnomo</option><option>Golias</option><option>Orc</option><option>Tiefling</option></select></label>
+</div>
+<div class="row">
+<label>Classe<select id="profileClass"><option>Wizard</option><option>Fighter</option><option>Rogue</option><option>Cleric</option><option>Bard</option><option>Druid</option><option>Ranger</option><option>Paladin</option><option>Warlock</option><option>Monk</option><option>Sorcerer</option><option>Barbarian</option></select></label>
+<label>Nível<input id="profileLevel" type="number" min="1" max="20" value="1"></label>
+</div>
+<p class="muted">Esta é a ficha básica da versão de testes; atributos completos e progressão SRD ficam para a próxima iteração.</p>
+<button id="profileSave">Guardar personagem</button>
+<hr style="border:0;border-top:1px solid #48566b;margin:22px 0">
+<h2>2. Escolher campanha e sala</h2><label>Código de acesso do jogo (GAME_ACCESS_CODE)<input id="gameCode" type="password" placeholder="O mesmo código do jogo individual"></label><button class="secondary" id="codeSave">Confirmar código</button><p class="muted">Cria uma sala e envia o código de convite à tua filha, ou entra numa sala que já exista.</p>
+<label>Campanha<select id="campaignChoice">
+<option value="veu">O Limiar do Véu — ruínas e mistério</option>
+<option value="farol">O Farol de Cinzabruma — intriga costeira</option>
+<option value="estrelas">As Chaves das Estrelas — observatório perdido</option>
+</select></label>
+<label>O teu nome no jogo<input id="displayName" maxlength="60" placeholder="Mendreas"></label>
+<div class="row"><input id="roomTitle" maxlength="120" value="Aventura de Lisboa e Açores" aria-label="Título da aventura"><button id="createBtn">Criar aventura</button></div>
+<div class="row" style="margin-top:12px"><input id="inviteInput" maxlength="12" placeholder="Código de convite" aria-label="Código de convite"><button id="joinBtn" class="secondary">Entrar por convite</button></div>
+<div id="roomsList"></div>
+</section>
+<div id="roomSection" hidden>
+<section><div class="bar"><div><h2 id="roomTitleView">Aventura</h2><div class="muted">Convite: <strong id="inviteView"></strong> <button class="secondary" id="copyBtn">Copiar</button></div></div><button class="secondary" id="leaveBtn">Ver outras salas</button></div></section>
+<section id="turnPanel">
+<div class="bar"><div><h2 id="turnHeading">Sala de espera</h2><p id="turnSummary" class="muted">À espera dos participantes…</p></div><button id="startBtn" hidden>Iniciar aventura</button></div>
+<div id="turnParticipants" class="muted"></div>
+<div id="myActionPanel" hidden><p class="muted">A tua decisão neste turno:</p><p id="myActionText"></p></div>
+</section>
+<div class="grid">
+<section><h2>A tua personagem</h2>
+<label>Nome<input id="charName" maxlength="80" value="Mendreas"></label>
+<label>Raça<input id="charRace" maxlength="80" value="Elfo"></label>
+<label>Classe<input id="charClass" maxlength="80" value="Mago"></label>
+<label>Nível<input id="charLevel" type="number" min="1" max="20" value="1"></label>
+<label>Pontos de vida<input id="charHp" type="number" min="0" max="999" value="8"></label>
+<label>Equipamento e notas<textarea id="charNotes" rows="4">Cajado e livro de feitiços</textarea></label>
+<button id="charSave">Guardar ficha</button>
+<hr style="border:0;border-top:1px solid #405068;margin:20px 0">
+<h2>Participantes</h2><div id="playersList" class="muted"></div><h2>Companheiros IA</h2><div id="companionsList" class="muted"></div>
+</section>
+<section><div class="bar"><h2>História partilhada</h2><button class="secondary" id="refreshBtn">Atualizar</button></div><img id="roomArt" alt="Ilustração guardada do local atual"><div id="roomArtNote" aria-live="polite">A primeira imagem será criada automaticamente quando o Mestre apresentar a cena.</div>
+<div id="messages" class="messages"></div>
+<label>A tua ação<textarea id="action" rows="3" placeholder="Examino a passagem com atenção..."></textarea></label>
+<div class="row"><button id="sendBtn">Confirmar decisão</button><button id="gmBtn" class="secondary" hidden>🐉 Resolver turno agora</button></div>
+<p class="muted">Cada jogador decide quando puder. O jogo aguarda por todos e só então o Mestre IA resolve o turno. Podes alterar a tua decisão até o Mestre começar. Não precisam de estar online ao mesmo tempo. Uma resolução usa créditos da OpenAI.</p>
+</section></div>
+</div>
+</div>
+</main>
+<script type="module">
+import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+const $=id=>document.getElementById(id);
+let sb,user,room,channel,knownMessages=[],players=[],isHost=false;
+let turn=null,turnMembers=[],myAction=null,turnBusy=false,autoAttempt=-1;
+const campaignIntros={veu:'Aventura original nas ruínas de Blackwood e o Véu antigo.',farol:'Aventura original sobre o farol apagado e os navios desaparecidos de Cinzabruma.',estrelas:'Aventura original no observatório de Serath e mapas de um céu impossível.'};
+let pollHandle=null,artBusy=false,lastSceneUrl='',lastSceneMessage='';
+let profiles=[],selectedProfile=null;
+const status=m=>$('status').textContent=m;
+$('gameCode').value=sessionStorage.getItem('dnd-game-code')||'';
+$('codeSave').onclick=()=>{sessionStorage.setItem('dnd-game-code',$('gameCode').value.trim());status('Código guardado para esta sessão.');};
+function show(id,yes){$(id).hidden=!yes}
+function err(e){status('Erro: '+(e?.message||String(e)))}
+async function query(p){if(p.error)throw p.error;return p.data}
+function setBusy(button,yes){$(button).disabled=yes}
+async function init(){
+ const r=await fetch('/.netlify/functions/game-config');const cfg=await r.json();if(!r.ok)throw Error(cfg.error||'Falta configurar o Supabase');
+ sb=createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true}});
+ sb.auth.onAuthStateChange((_event,session)=>{if(session?.user?.id!==user?.id){user=session?.user||null;void updateAuth()}});
+ const {data:{session}}=await sb.auth.getSession();user=session?.user||null;await updateAuth();
+}
+async function updateAuth(){show('authSection',!user);show('appSection',!!user);if(!user){room=null;status('Inicia sessão para jogar.');return}
+ $('userLabel').textContent=user.email;await showLobby();status('Sessão iniciada.')}
+$('loginBtn').onclick=async()=>{setBusy('loginBtn',true);try{await query(await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value}));status('Sessão iniciada.')}catch(e){err(e)}finally{setBusy('loginBtn',false)}};
+$('signupBtn').onclick=async()=>{setBusy('signupBtn',true);try{let x=await query(await sb.auth.signUp({email:$('email').value.trim(),password:$('password').value,options:{emailRedirectTo:location.origin+'/multijogador.html'}}));status(x.session?'Conta criada.':'Consulta o teu email e confirma o registo antes de entrar.')}catch(e){err(e)}finally{setBusy('signupBtn',false)}};
+$('logoutBtn').onclick=async()=>{await leaveRoom();await sb.auth.signOut();};
+async function showLobby(){show('lobbySection',true);show('roomSection',false);await loadProfiles();
+ const data=await query(await sb.from('game_rooms').select('id,title,invite_code,owner_id').order('created_at',{ascending:false}));const dest=$('roomsList');dest.replaceChildren();
+ const title=document.createElement('h3');title.textContent='As tuas salas';dest.append(title);
+ if(!data.length){const p=document.createElement('p');p.className='muted';p.textContent='Ainda não participas em nenhuma sala.';dest.append(p)}
+ for(const r of data){const b=document.createElement('button');b.className='secondary';b.style.margin='5px';b.textContent=r.title;b.onclick=()=>openRoom(r.id);dest.append(b)}
+}
+async function loadProfiles(){
+ if(!sb||!user)return;
+ profiles=await query(await sb.from('game_profiles').select('id,name,sheet').order('updated_at',{ascending:false}));
+ const sel=$('profileSelect');const prev=selectedProfile?.id||localStorage.getItem('cv-profile-'+user.id)||'';
+ sel.replaceChildren();
+ const empty=document.createElement('option');empty.value='';empty.textContent='Criar nova personagem';sel.append(empty);
+ for(const profile of profiles){const o=document.createElement('option');o.value=profile.id;o.textContent=profile.name+' · nível '+(profile.sheet?.nivel||1);sel.append(o)}
+ const match=profiles.find(p=>p.id===prev)||profiles[0]||null;
+ sel.value=match?.id||'';selectedProfile=match;showProfileForm(match);
+}
+function showProfileForm(profile){
+ $('profileName').value=profile?.name||'Mendreas';
+ $('profileRace').value=profile?.sheet?.raca||'Elfo';
+ $('profileClass').value=profile?.sheet?.classe||'Wizard';
+ $('profileLevel').value=profile?.sheet?.nivel||1;
+}
+$('profileSelect').onchange=()=>{
+ selectedProfile=profiles.find(p=>p.id===$('profileSelect').value)||null;
+ showProfileForm(selectedProfile);
+};
+$('profileSave').onclick=async()=>{
+ setBusy('profileSave',true);
+ try{
+  const name=$('profileName').value.trim();
+  if(!name)throw Error('Escreve um nome para a personagem.');
+  const profileId=selectedProfile?.id||crypto.randomUUID();
+  const sheet={...(selectedProfile?.sheet||{}),raca:$('profileRace').value,classe:$('profileClass').value,
+   nivel:Number($('profileLevel').value),pv:selectedProfile?.sheet?.pv||8};
+  await query(await sb.from('game_profiles').upsert({id:profileId,owner_id:user.id,name,sheet,updated_at:new Date().toISOString()}));
+  localStorage.setItem('cv-profile-'+user.id,profileId);
+  await loadProfiles();status('Personagem guardada. Já podes escolher uma campanha ou sala.');
+ }catch(e){err(e)}finally{setBusy('profileSave',false)}
+};
+function requireProfile(){
+ if(!selectedProfile)throw Error('Primeiro guarda uma personagem e seleciona-a na lista.');
+ return selectedProfile;
+}
+async function connectProfileToRoom(roomId){
+ const profile=requireProfile();
+ const existing=await query(await sb.from('game_characters').select('id').eq('room_id',roomId).eq('user_id',user.id).maybeSingle());
+ if(!existing)await query(await sb.from('game_characters').insert({room_id:roomId,user_id:user.id,profile_id:profile.id,name:profile.name,sheet:profile.sheet}));
+}
+function name(){const n=$('displayName').value.trim();if(n.length<1||n.length>60)throw Error('Escreve o teu nome de jogador (até 60 caracteres).');return n}
+$('createBtn').onclick=async()=>{setBusy('createBtn',true);try{requireProfile();const id=await query(await sb.rpc('create_campaign_room',{p_title:$('roomTitle').value.trim(),p_player_name:name(),p_campaign_id:$('campaignChoice').value,p_campaign_intro:campaignIntros[$('campaignChoice').value]}));await connectProfileToRoom(id);await openRoom(id)}catch(e){err(e)}finally{setBusy('createBtn',false)}};
+$('joinBtn').onclick=async()=>{setBusy('joinBtn',true);try{requireProfile();const id=await query(await sb.rpc('join_game_room',{p_invite_code:$('inviteInput').value.trim().toUpperCase(),p_player_name:name()}));await connectProfileToRoom(id);await openRoom(id)}catch(e){err(e)}finally{setBusy('joinBtn',false)}};
+async function openRoom(id){
+ await leaveRoom();const data=await query(await sb.from('game_rooms').select('*').eq('id',id).single());room=data;isHost=data.owner_id===user.id;
+ $('roomTitleView').textContent=data.title+' · '+({veu:'O Limiar do Véu',farol:'O Farol de Cinzabruma',estrelas:'As Chaves das Estrelas'}[data.campaign_id]||'Campanha');$('inviteView').textContent=data.invite_code;show('lobbySection',false);show('roomSection',true);show('gmBtn',isHost);
+ const chars=await query(await sb.from('game_characters').select('*').eq('room_id',id).eq('user_id',user.id).maybeSingle());
+ if(chars){const sh=chars.sheet||{};$('charName').value=chars.name;$('charRace').value=sh.raca||'';$('charClass').value=sh.classe||'';$('charLevel').value=sh.nivel||1;$('charHp').value=sh.pv??8;$('charNotes').value=sh.equipamento||''}
+ await refresh();
+ channel=sb.channel('room-'+id)
+ .on('postgres_changes',{event:'INSERT',schema:'public',table:'game_messages',filter:'room_id=eq.'+id},()=>{void refresh().catch(err)})
+ .on('postgres_changes',{event:'*',schema:'public',table:'game_turns',filter:'room_id=eq.'+id},()=>{void refresh().catch(err)})
+ .on('postgres_changes',{event:'*',schema:'public',table:'game_turn_members',filter:'room_id=eq.'+id},()=>{void refresh().catch(err)})
+ .subscribe();
+ if(pollHandle)clearInterval(pollHandle);
+ pollHandle=setInterval(()=>{if(room?.id===id&&!turnBusy)void refresh().catch(err)},15000);
+ status('Sala aberta. Os jogadores podem entrar em momentos diferentes.');
+}
+async function leaveRoom(){
+ if(pollHandle){clearInterval(pollHandle);pollHandle=null}
+ if(channel&&sb){await sb.removeChannel(channel);channel=null}
+ room=null;turn=null;autoAttempt=-1;lastSceneUrl='';lastSceneMessage='';
+ $('roomArt').style.display='none';
+}
+$('leaveBtn').onclick=async()=>{await leaveRoom();await showLobby()};
+$('copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(room.invite_code);status('Código de convite copiado.')}catch(e){err(e)}};
+$('charSave').onclick=async()=>{if(!room)return;setBusy('charSave',true);try{
+ const sheet={raca:$('charRace').value,classe:$('charClass').value,nivel:Number($('charLevel').value),pv:Number($('charHp').value),equipamento:$('charNotes').value};
+ const row={room_id:room.id,user_id:user.id,profile_id:selectedProfile?.id||null,name:$('charName').value.trim(),sheet,updated_at:new Date().toISOString()};
+ await query(await sb.from('game_characters').upsert(row,{onConflict:'room_id,user_id'}));
+ if(row.profile_id)await query(await sb.from('game_profiles').update({name:row.name,sheet,updated_at:row.updated_at}).eq('id',row.profile_id));
+ status('Ficha da sala e personagem permanente atualizadas.');
+ }catch(e){err(e)}finally{setBusy('charSave',false)}};
+async function refresh(){
+ if(!room||turnBusy)return;
+ const id=room.id;
+ const [m,p,t]=await Promise.all([
+   sb.from('game_messages').select('id,role,content,author_id,created_at').eq('room_id',id).order('created_at',{ascending:true}).limit(250),
+   sb.from('game_players').select('user_id,display_name').eq('room_id',id),
+   sb.from('game_turns').select('*').eq('room_id',id).maybeSingle()
+ ]);
+ if(room?.id!==id)return;
+ knownMessages=await query(m);players=await query(p);turn=await query(t);
+ $('playersList').textContent=players.map(x=>x.display_name).join(' · ');
+ const companions=await query(await sb.from('game_companions').select('name,archetype').eq('room_id',id));
+ $('companionsList').textContent=companions.length?companions.map(x=>x.name+' — '+x.archetype).join(' · '):'Sem companheiros configurados nesta sala.';
+
+ const dest=$('messages');dest.replaceChildren();
+ if(!knownMessages.length)dest.textContent='A aventura ainda não começou. Quando todos entrarem, o anfitrião inicia o primeiro turno.';
+ for(const msg of knownMessages){
+  const div=document.createElement('div');div.className='msg'+(msg.role==='gm'?' gm':'');
+  const who=document.createElement('div');who.className='who';
+  who.textContent=msg.role==='gm'?'Mestre de Jogo':players.find(p=>p.user_id===msg.author_id)?.display_name||'Jogador';
+  const body=document.createElement('div');body.textContent=msg.role==='gm'?msg.content.replace(/\[LOCAL:[a-z0-9-]+\]/gi,'').trim():msg.content;div.append(who,body);dest.append(div)
+ }
+ dest.scrollTop=dest.scrollHeight;
+ const latestGM=[...knownMessages].reverse().find(m=>m.role==='gm');
+ if(latestGM&&latestGM.id!==lastSceneMessage){
+  lastSceneMessage=latestGM.id;
+  lastSceneUrl='';
+  $('roomArt').style.display='none';
+  $('roomArtNote').textContent='A preparar a ilustração do local…';
+ }
+ if(latestGM&&!artBusy&&!lastSceneUrl)void refreshSceneArt();
+ if(!turn){
+  turnMembers=[];myAction=null;
+  $('turnHeading').textContent='Sala de espera';
+  $('turnSummary').textContent=players.length+' jogador(es) na sala. A aventura começa quando existirem pelo menos 2 e o anfitrião clicar em Iniciar.';
+  $('turnParticipants').textContent=players.map(p=>p.display_name).join(' · ')||'Ainda sem participantes';
+  show('startBtn',isHost);
+  $('startBtn').disabled=players.length<2;
+  show('sendBtn',false);show('gmBtn',false);show('myActionPanel',false);
+  $('action').disabled=true;
+  return;
+ }
+ const tm=await query(await sb.from('game_turn_members').select('user_id,ready').eq('room_id',id).eq('turn_number',turn.turn_number));
+ const mine=await query(await sb.from('game_turn_actions').select('content').eq('room_id',id).eq('turn_number',turn.turn_number).eq('user_id',user.id).maybeSingle());
+ if(room?.id!==id)return;
+ turnMembers=tm;myAction=mine;
+ const allReady=tm.length>=2&&tm.every(x=>x.ready);
+ const included=tm.some(x=>x.user_id===user.id);
+ $('turnHeading').textContent='Turno '+turn.turn_number+(turn.status==='resolving'?' · Mestre a narrar':' · A recolher decisões');
+ $('turnParticipants').textContent=tm.map(x=>(players.find(p=>p.user_id===x.user_id)?.display_name||'Jogador')+' — '+(x.ready?'✓ Decisão confirmada':'⌛ Por decidir')).join('  |  ');
+ $('turnSummary').textContent=turn.status==='resolving'?'Todos decidiram. A IA está a produzir a próxima cena.':
+  allReady?'Todos confirmaram! A resolver o turno…':
+  (tm.filter(x=>x.ready).length+'/'+tm.length+' decisões confirmadas. A história só avança quando todos decidirem.');
+ show('startBtn',false);
+ show('myActionPanel',!!mine);
+ $('myActionText').textContent=mine?.content||'';
+ show('sendBtn',included&&turn.status==='collecting');
+ $('action').disabled=!included||turn.status!=='collecting';
+ $('sendBtn').disabled=turn.status!=='collecting';
+ $('sendBtn').textContent=mine?'Alterar a minha decisão':'Confirmar decisão';
+ show('gmBtn',allReady&&turn.status==='collecting');
+ if(allReady&&turn.status==='collecting'&&autoAttempt!==turn.turn_number){
+   autoAttempt=turn.turn_number;
+   void resolveTurn(true);
+ }
+}
+$('startBtn').onclick=async()=>{if(!room)return;setBusy('startBtn',true);
+ try{await query(await sb.rpc('start_game_turns',{p_room_id:room.id}));await refresh();status('Aventura iniciada. Cada pessoa já pode indicar a sua decisão para o turno 1.')}
+ catch(e){err(e)}finally{setBusy('startBtn',false)}
+};
+$('refreshBtn').onclick=()=>refresh().catch(err);
+$('sendBtn').onclick=async()=>{if(!room||!turn)return;
+ const content=$('action').value.trim();if(!content){status('Escreve primeiro a tua decisão.');return}
+ setBusy('sendBtn',true);
+ try{
+   await query(await sb.rpc('submit_game_turn',{p_room_id:room.id,p_content:content}));
+   $('action').value='';await refresh();
+   status('Decisão confirmada. Podes sair: a aventura fica guardada à espera dos restantes.');
+ }catch(e){err(e)}finally{setBusy('sendBtn',false)}
+};
+async function refreshSceneArt(){
+ if(!room||artBusy||!knownMessages.some(x=>x.role==='gm'))return;
+ const id=room.id;artBusy=true;
+ try{
+  const token=(await sb.auth.getSession()).data.session?.access_token;
+  const code=sessionStorage.getItem('dnd-game-code')||'';
+  if(!token||!code){$('roomArtNote').textContent='Confirma o código de acesso na área das salas para carregar a imagem.';return}
+  const res=await fetch('/.netlify/functions/room-art',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'x-game-code':code},
+    body:JSON.stringify({room_id:id})
+  });
+  const data=await res.json();
+  if(!res.ok)throw Error(data.error||'Erro ao obter a ilustração');
+  if(room?.id!==id)return;
+  if(data.status==='ready'&&data.url){
+    lastSceneUrl=data.url;$('roomArt').src=data.url;$('roomArt').style.display='block';
+    $('roomArtNote').textContent='Local: '+data.location.replaceAll('-',' ')+' · imagem guardada para futuras visitas';
+  }else if(data.status==='pending')$('roomArtNote').textContent='A gerar a ilustração na nuvem. Será partilhada pelos jogadores.';
+ }catch(e){$('roomArtNote').textContent='Imagem indisponível neste momento: '+e.message}
+ finally{artBusy=false}
+}
+
+async function resolveTurn(automatic=false){
+ if(!room||!turn||turnBusy)return;
+ const roomId=room.id;turnBusy=true;setBusy('gmBtn',true);
+ status('Todas as decisões recebidas. O Mestre IA está a resolver o turno...');
+ try{
+  const token=(await sb.auth.getSession()).data.session?.access_token;
+  if(!token)throw Error('Sessão expirada. Volta a entrar.');
+  const code=sessionStorage.getItem('dnd-game-code')||'';
+  if(!code)throw Error('Introduz e confirma o código de acesso do jogo na área das salas.');
+  const r=await fetch('/.netlify/functions/room-turn',{
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-game-code':code},
+    body:JSON.stringify({room_id:roomId})
+  });
+  const result=await r.json();if(!r.ok)throw Error(result.error||'Falha na narração.');
+  status('Turno concluído! A próxima cena já está disponível para todos.');
+ }catch(e){if(!automatic)err(e);else status('Não foi possível resolver automaticamente: '+e.message+'. Usa o botão Resolver turno agora para tentar novamente.')}
+ finally{turnBusy=false;setBusy('gmBtn',false);if(room?.id===roomId)await refresh().catch(err)}
+}
+$('gmBtn').onclick=()=>resolveTurn(false);
+
+init().catch(err);
+</script>
+</body></html>
