@@ -32,7 +32,7 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 </section>
 <div id="appSection" hidden>
 <section class="bar"><div>Ligado como <strong id="userLabel"></strong></div><button class="secondary" id="logoutBtn">Terminar sessão</button></section>
-<section id="lobbySection"><h2>Salas de aventura</h2><p class="muted">Cria uma sala e envia o código de convite à tua filha, ou entra numa sala que já exista.</p>
+<section id="lobbySection"><h2>Salas de aventura</h2><label>Código de acesso do jogo (GAME_ACCESS_CODE)<input id="gameCode" type="password" placeholder="O mesmo código do jogo individual"></label><button class="secondary" id="codeSave">Confirmar código</button><p class="muted">Cria uma sala e envia o código de convite à tua filha, ou entra numa sala que já exista.</p>
 <label>O teu nome no jogo<input id="displayName" maxlength="60" placeholder="Mendreas"></label>
 <div class="row"><input id="roomTitle" maxlength="120" value="Aventura de Lisboa e Açores" aria-label="Título da aventura"><button id="createBtn">Criar aventura</button></div>
 <div class="row" style="margin-top:12px"><input id="inviteInput" maxlength="12" placeholder="Código de convite" aria-label="Código de convite"><button id="joinBtn" class="secondary">Entrar por convite</button></div>
@@ -66,6 +66,8 @@ import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 const $=id=>document.getElementById(id);
 let sb,user,room,channel,knownMessages=[],players=[],isHost=false;
 const status=m=>$('status').textContent=m;
+$('gameCode').value=sessionStorage.getItem('dnd-game-code')||'';
+$('codeSave').onclick=()=>{sessionStorage.setItem('dnd-game-code',$('gameCode').value.trim());status('Código guardado para esta sessão.');};
 function show(id,yes){$(id).hidden=!yes}
 function err(e){status('Erro: '+(e?.message||String(e)))}
 async function query(p){if(p.error)throw p.error;return p.data}
