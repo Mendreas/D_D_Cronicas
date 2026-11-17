@@ -4,13 +4,13 @@
 **Branch de testes, NÃO misturar em main ainda.** O site atual em https://dcronicas.netlify.app/ mantém-se intocado.
 
 ## Implementado neste incremento
-- Ecrã inicial a distinguir Solo / Multijogador; catálogo de três campanhas originais
-- Criador inicial de personagens com atributos usando array padrão e cálculo de PV iniciais
+- Ecrã inicial a distinguir Solo / Multijogador; percurso Solo: **Personagens permanentes → Campanhas → Aventura**; catálogo de três campanhas originais com miniaturas ilustradas extraídas da referência enviada
+- Criador inicial de personagens com atributos usando array padrão e cálculo de PV iniciais; personagem e progressão ficam em perfil separado do save de cada campanha
 - Solo com save slots por campanha neste navegador, recuperação e imagem automática cacheada por localização em IndexedDB
 - Layout Solo: descrição esquerda / cenário direita / ações em baixo, ficha recolhível
 - Funções iniciais de regras SRD 2024: modificadores, proficiência, testes d20, iniciativa, CA, danos
-- Grupo solo: jogador humano com 0–3 companheiros IA
-- Multijogador: 2 humanos, 2 companheiros IA, lobby e turnos assíncronos (após aplicar migrations)
+- Grupo solo: **sempre 1 jogador humano + 3 companheiros IA** (Kael, Lyra, Neris)
+- Multijogador: 2 humanos, 2 companheiros IA, personagens persistentes por conta, lobby e turnos assíncronos (após aplicar migrations)
 - Multijogador: ilustrações guardadas em bucket privado Supabase Storage por local (após aplicar migrations)
 
 ## Não concluído (não apresentar como D&D SRD integral)
@@ -26,12 +26,16 @@
 1. No Supabase **D_D_Cronicas**, confirmar que foi executado `turnos_assincronos.sql`.
 2. Executar `supabase/campanhas_companheiros.sql` como query nova.
 3. Executar `supabase/imagens_locais.sql` como query nova.
-4. Confirmar no Netlify os segredos já configurados: OPENAI_API_KEY, GAME_ACCESS_CODE, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY (não os copiar para o GitHub).
-5. Abrir o Deploy Preview da PR #2, quando aparecer; iniciar pelo ecrã inicial; criar campanha e personagem solo.
-6. Confirmar que uma imagem do mesmo local é reutilizada ao regressar, que o save solo continua após fechar/reabrir o navegador e que o modo multijogador aguarda os dois jogadores.
+4. Executar `supabase/personagens_permanentes.sql` como query nova (para reutilizar personagens no multijogador).
+5. Confirmar no Netlify os segredos já configurados: OPENAI_API_KEY, GAME_ACCESS_CODE, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY (não os copiar para o GitHub).
+6. Abrir o Deploy Preview da PR #2, quando aparecer; iniciar pelo ecrã inicial; criar campanha e personagem solo.
+7. Confirmar que uma imagem do mesmo local é reutilizada ao regressar, que o save solo continua após fechar/reabrir o navegador e que o modo multijogador aguarda os dois jogadores.
 
 ## Cuidados
 O código está em desenvolvimento e passou apenas por validação estática de sintaxe. Não houve execução com a chave OpenAI do utilizador ou no seu projeto Supabase. Fazer primeiro testes no Deploy Preview. Não carregar em Merge ou Publish deploy.
 
 ## Atribuição
 Este projeto incorpora ideias e mecânicas do SRD 5.2.1 de Wizards of the Coast LLC, em https://www.dndbeyond.com/srd, sob CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/. A implementação e as aventuras de teste são originais e não uma reprodução dos livros comerciais.
+
+## Organização permanente das personagens
+Uma personagem é criada antes de escolher a campanha. A ficha base fica num perfil global (localStorage no solo, tabela game_profiles com RLS no multijogador); cada campanha tem uma gravação independente, mas pode reutilizar a personagem e a progressão. A progressão SRD e o registo de experiência ainda precisam do motor de regras completo; a importação automática das alterações entre campanhas foi preparada apenas no cliente.
