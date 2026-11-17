@@ -141,6 +141,10 @@ grant execute on function public.claim_game_turn(uuid),
   public.finish_game_turn(uuid,integer,text),public.abort_game_turn(uuid,integer)
   to service_role;
 
+-- Impedir que clientes contornem os turnos inserindo mensagens diretamente.
+revoke insert on public.game_messages from authenticated;
+drop policy if exists messages_insert on public.game_messages;
+
 -- Realtime (duplicados evitados).
 do $$ begin
  if not exists(
