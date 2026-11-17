@@ -40,6 +40,11 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 </section>
 <div id="roomSection" hidden>
 <section><div class="bar"><div><h2 id="roomTitleView">Aventura</h2><div class="muted">Convite: <strong id="inviteView"></strong> <button class="secondary" id="copyBtn">Copiar</button></div></div><button class="secondary" id="leaveBtn">Ver outras salas</button></div></section>
+<section id="turnPanel">
+<div class="bar"><div><h2 id="turnHeading">Sala de espera</h2><p id="turnSummary" class="muted">À espera dos participantes…</p></div><button id="startBtn" hidden>Iniciar aventura</button></div>
+<div id="turnParticipants" class="muted"></div>
+<div id="myActionPanel" hidden><p class="muted">A tua decisão neste turno:</p><p id="myActionText"></p></div>
+</section>
 <div class="grid">
 <section><h2>A tua personagem</h2>
 <label>Nome<input id="charName" maxlength="80" value="Mendreas"></label>
@@ -55,8 +60,8 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 <section><div class="bar"><h2>História partilhada</h2><button class="secondary" id="refreshBtn">Atualizar</button></div>
 <div id="messages" class="messages"></div>
 <label>A tua ação<textarea id="action" rows="3" placeholder="Examino a passagem com atenção..."></textarea></label>
-<div class="row"><button id="sendBtn">Enviar ação</button><button id="gmBtn" class="secondary" hidden>🐉 Continuar com o Mestre IA</button></div>
-<p class="muted">As ações são partilhadas entre jogadores. Apenas o criador da sala pode pedir a continuação da IA, evitando narrativas simultâneas. Os custos de IA pertencem ao proprietário da chave OpenAI.</p>
+<div class="row"><button id="sendBtn">Confirmar decisão</button><button id="gmBtn" class="secondary" hidden>🐉 Resolver turno agora</button></div>
+<p class="muted">Cada jogador decide quando puder. O jogo aguarda por todos e só então o Mestre IA resolve o turno. Podes alterar a tua decisão até o Mestre começar. Não precisam de estar online ao mesmo tempo. Uma resolução usa créditos da OpenAI.</p>
 </section></div>
 </div>
 </div>
@@ -65,6 +70,8 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 const $=id=>document.getElementById(id);
 let sb,user,room,channel,knownMessages=[],players=[],isHost=false;
+let turn=null,turnMembers=[],myAction=null,turnBusy=false,autoAttempt=-1;
+let pollHandle=null;
 const status=m=>$('status').textContent=m;
 $('gameCode').value=sessionStorage.getItem('dnd-game-code')||'';
 $('codeSave').onclick=()=>{sessionStorage.setItem('dnd-game-code',$('gameCode').value.trim());status('Código guardado para esta sessão.');};
@@ -98,10 +105,20 @@ async function openRoom(id){
  const chars=await query(await sb.from('game_characters').select('*').eq('room_id',id).eq('user_id',user.id).maybeSingle());
  if(chars){const sh=chars.sheet||{};$('charName').value=chars.name;$('charRace').value=sh.raca||'';$('charClass').value=sh.classe||'';$('charLevel').value=sh.nivel||1;$('charHp').value=sh.pv??8;$('charNotes').value=sh.equipamento||''}
  await refresh();
- channel=sb.channel('room-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'game_messages',filter:'room_id=eq.'+id},()=>{void refresh()}).subscribe();
- status('Sala aberta. Aventura partilhada ativa.');
+ channel=sb.channel('room-'+id)
+ .on('postgres_changes',{event:'INSERT',schema:'public',table:'game_messages',filter:'room_id=eq.'+id},()=>{void refresh().catch(err)})
+ .on('postgres_changes',{event:'*',schema:'public',table:'game_turns',filter:'room_id=eq.'+id},()=>{void refresh().catch(err)})
+ .on('postgres_changes',{event:'*',schema:'public',table:'game_turn_members',filter:'room_id=eq.'+id},()=>{void refresh().catch(err)})
+ .subscribe();
+ if(pollHandle)clearInterval(pollHandle);
+ pollHandle=setInterval(()=>{if(room?.id===id&&!turnBusy)void refresh().catch(err)},15000);
+ status('Sala aberta. Os jogadores podem entrar em momentos diferentes.');
 }
-async function leaveRoom(){if(channel&&sb){await sb.removeChannel(channel);channel=null}room=null}
+async function leaveRoom(){
+ if(pollHandle){clearInterval(pollHandle);pollHandle=null}
+ if(channel&&sb){await sb.removeChannel(channel);channel=null}
+ room=null;turn=null;autoAttempt=-1;
+}
 $('leaveBtn').onclick=async()=>{await leaveRoom();await showLobby()};
 $('copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(room.invite_code);status('Código de convite copiado.')}catch(e){err(e)}};
 $('charSave').onclick=async()=>{if(!room)return;setBusy('charSave',true);try{
@@ -109,19 +126,95 @@ $('charSave').onclick=async()=>{if(!room)return;setBusy('charSave',true);try{
  const row={room_id:room.id,user_id:user.id,name:$('charName').value.trim(),sheet,updated_at:new Date().toISOString()};
  await query(await sb.from('game_characters').upsert(row,{onConflict:'room_id,user_id'}));status('Ficha guardada na nuvem.');
  }catch(e){err(e)}finally{setBusy('charSave',false)}};
-async function refresh(){if(!room)return;
- const [m,p]=await Promise.all([sb.from('game_messages').select('id,role,content,author_id,created_at').eq('room_id',room.id).order('created_at',{ascending:true}).limit(250),sb.from('game_players').select('user_id,display_name').eq('room_id',room.id)]);
- knownMessages=await query(m);players=await query(p);$('playersList').textContent=players.map(x=>x.display_name).join(' · ');
- const dest=$('messages');dest.replaceChildren();if(!knownMessages.length)dest.textContent='Ainda não há ações. Escreve a primeira ação da aventura.';
- for(const msg of knownMessages){const div=document.createElement('div');div.className='msg'+(msg.role==='gm'?' gm':'');const who=document.createElement('div');who.className='who';who.textContent=msg.role==='gm'?'Mestre de Jogo':players.find(p=>p.user_id===msg.author_id)?.display_name||'Jogador';const body=document.createElement('div');body.textContent=msg.content;div.append(who,body);dest.append(div)}dest.scrollTop=dest.scrollHeight;
+async function refresh(){
+ if(!room||turnBusy)return;
+ const id=room.id;
+ const [m,p,t]=await Promise.all([
+   sb.from('game_messages').select('id,role,content,author_id,created_at').eq('room_id',id).order('created_at',{ascending:true}).limit(250),
+   sb.from('game_players').select('user_id,display_name').eq('room_id',id),
+   sb.from('game_turns').select('*').eq('room_id',id).maybeSingle()
+ ]);
+ if(room?.id!==id)return;
+ knownMessages=await query(m);players=await query(p);turn=await query(t);
+ $('playersList').textContent=players.map(x=>x.display_name).join(' · ');
+ const dest=$('messages');dest.replaceChildren();
+ if(!knownMessages.length)dest.textContent='A aventura ainda não começou. Quando todos entrarem, o anfitrião inicia o primeiro turno.';
+ for(const msg of knownMessages){
+  const div=document.createElement('div');div.className='msg'+(msg.role==='gm'?' gm':'');
+  const who=document.createElement('div');who.className='who';
+  who.textContent=msg.role==='gm'?'Mestre de Jogo':players.find(p=>p.user_id===msg.author_id)?.display_name||'Jogador';
+  const body=document.createElement('div');body.textContent=msg.content;div.append(who,body);dest.append(div)
+ }
+ dest.scrollTop=dest.scrollHeight;
+ if(!turn){
+  turnMembers=[];myAction=null;
+  $('turnHeading').textContent='Sala de espera';
+  $('turnSummary').textContent=players.length+' jogador(es) na sala. A aventura começa quando existirem pelo menos 2 e o anfitrião clicar em Iniciar.';
+  $('turnParticipants').textContent=players.map(p=>p.display_name).join(' · ')||'Ainda sem participantes';
+  show('startBtn',isHost);
+  $('startBtn').disabled=players.length<2;
+  show('sendBtn',false);show('gmBtn',false);show('myActionPanel',false);
+  $('action').disabled=true;
+  return;
+ }
+ const tm=await query(await sb.from('game_turn_members').select('user_id,ready').eq('room_id',id).eq('turn_number',turn.turn_number));
+ const mine=await query(await sb.from('game_turn_actions').select('content').eq('room_id',id).eq('turn_number',turn.turn_number).eq('user_id',user.id).maybeSingle());
+ if(room?.id!==id)return;
+ turnMembers=tm;myAction=mine;
+ const allReady=tm.length>=2&&tm.every(x=>x.ready);
+ const included=tm.some(x=>x.user_id===user.id);
+ $('turnHeading').textContent='Turno '+turn.turn_number+(turn.status==='resolving'?' · Mestre a narrar':' · A recolher decisões');
+ $('turnParticipants').textContent=tm.map(x=>(players.find(p=>p.user_id===x.user_id)?.display_name||'Jogador')+' — '+(x.ready?'✓ Decisão confirmada':'⌛ Por decidir')).join('  |  ');
+ $('turnSummary').textContent=turn.status==='resolving'?'Todos decidiram. A IA está a produzir a próxima cena.':
+  allReady?'Todos confirmaram! A resolver o turno…':
+  (tm.filter(x=>x.ready).length+'/'+tm.length+' decisões confirmadas. A história só avança quando todos decidirem.');
+ show('startBtn',false);
+ show('myActionPanel',!!mine);
+ $('myActionText').textContent=mine?.content||'';
+ show('sendBtn',included&&turn.status==='collecting');
+ $('action').disabled=!included||turn.status!=='collecting';
+ $('sendBtn').disabled=turn.status!=='collecting';
+ $('sendBtn').textContent=mine?'Alterar a minha decisão':'Confirmar decisão';
+ show('gmBtn',allReady&&turn.status==='collecting');
+ if(allReady&&turn.status==='collecting'&&autoAttempt!==turn.turn_number){
+   autoAttempt=turn.turn_number;
+   void resolveTurn(true);
+ }
 }
+$('startBtn').onclick=async()=>{if(!room)return;setBusy('startBtn',true);
+ try{await query(await sb.rpc('start_game_turns',{p_room_id:room.id}));await refresh();status('Aventura iniciada. Cada pessoa já pode indicar a sua decisão para o turno 1.')}
+ catch(e){err(e)}finally{setBusy('startBtn',false)}
+};
 $('refreshBtn').onclick=()=>refresh().catch(err);
-$('sendBtn').onclick=async()=>{if(!room)return;const content=$('action').value.trim();if(!content)return;setBusy('sendBtn',true);try{await query(await sb.from('game_messages').insert({room_id:room.id,author_id:user.id,role:'player',content}));$('action').value='';await refresh();status('Ação enviada. O anfitrião pode pedir ao Mestre de Jogo para continuar.')}catch(e){err(e)}finally{setBusy('sendBtn',false)}};
-$('gmBtn').onclick=async()=>{if(!room||!isHost)return;setBusy('gmBtn',true);status('O Mestre de Jogo está a construir a próxima cena...');try{
- const token=(await sb.auth.getSession()).data.session?.access_token;if(!token)throw Error('Sessão expirada.');
- const r=await fetch('/.netlify/functions/room-turn',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-game-code':sessionStorage.getItem('dnd-game-code')||''},body:JSON.stringify({room_id:room.id})});const result=await r.json();if(!r.ok)throw Error(result.error||'Erro do Mestre');
- await refresh();status('Cena atualizada para todos os participantes.');
- }catch(e){err(e)}finally{setBusy('gmBtn',false)}};
+$('sendBtn').onclick=async()=>{if(!room||!turn)return;
+ const content=$('action').value.trim();if(!content){status('Escreve primeiro a tua decisão.');return}
+ setBusy('sendBtn',true);
+ try{
+   await query(await sb.rpc('submit_game_turn',{p_room_id:room.id,p_content:content}));
+   $('action').value='';await refresh();
+   status('Decisão confirmada. Podes sair: a aventura fica guardada à espera dos restantes.');
+ }catch(e){err(e)}finally{setBusy('sendBtn',false)}
+};
+async function resolveTurn(automatic=false){
+ if(!room||!turn||turnBusy)return;
+ const roomId=room.id;turnBusy=true;setBusy('gmBtn',true);
+ status('Todas as decisões recebidas. O Mestre IA está a resolver o turno...');
+ try{
+  const token=(await sb.auth.getSession()).data.session?.access_token;
+  if(!token)throw Error('Sessão expirada. Volta a entrar.');
+  const code=sessionStorage.getItem('dnd-game-code')||'';
+  if(!code)throw Error('Introduz e confirma o código de acesso do jogo na área das salas.');
+  const r=await fetch('/.netlify/functions/room-turn',{
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-game-code':code},
+    body:JSON.stringify({room_id:roomId})
+  });
+  const result=await r.json();if(!r.ok)throw Error(result.error||'Falha na narração.');
+  status('Turno concluído! A próxima cena já está disponível para todos.');
+ }catch(e){if(!automatic)err(e);else status('Não foi possível resolver automaticamente: '+e.message+'. Usa o botão Resolver turno agora para tentar novamente.')}
+ finally{turnBusy=false;setBusy('gmBtn',false);if(room?.id===roomId)await refresh().catch(err)}
+}
+$('gmBtn').onclick=()=>resolveTurn(false);
+
 init().catch(err);
 </script>
 </body></html>
