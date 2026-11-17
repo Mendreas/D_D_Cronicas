@@ -14,7 +14,8 @@ button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8
 <label>Antecedente<select id="background"><option>Acólito</option><option>Artesão</option><option>Artista</option><option>Charlatão</option><option>Criminoso</option><option>Ermitão</option><option>Fazendeiro</option><option>Guarda</option><option>Guia</option><option>Marinheiro</option><option selected>Sábio</option><option>Soldado</option><option>Mercador</option><option>Nobre</option><option>Escriba</option><option>Viajante</option></select></label>
 </div></div>
 <div class="panel"><h2>Atributos</h2><p class="muted">Distribui os valores 15, 14, 13, 12, 10 e 8 (antes dos bónus da origem). O sistema valida que cada valor é usado uma única vez.</p><div class="abilities" id="abilities"></div><p class="notice" id="statStatus"></p></div>
-<div class="panel"><h2>Identidade e equipamento</h2><label>Personalidade<textarea id="personality" rows="2">Positivo, carismático e curioso, procura desvendar mistérios.</textarea></label><label>História pessoal<textarea id="history" rows="2">Um mago errante interessado em manuscritos antigos e segredos esquecidos.</textarea></label><label>Equipamento<textarea id="equipment" rows="2">Cajado, livro de feitiços, manto de viagem, mochila</textarea></label><p class="muted">Bónus de atributos e talentos de origem serão aplicados numa etapa adicional. Esta ficha inicial não substitui ainda uma ficha SRD integral.</p><button id="start">Criar e iniciar aventura</button><p id="notice" class="notice"></p></div>
+<div class="panel"><h2>Identidade e equipamento</h2><label>Personalidade<textarea id="personality" rows="2">Positivo, carismático e curioso, procura desvendar mistérios.</textarea></label><label>História pessoal<textarea id="history" rows="2">Um mago errante interessado em manuscritos antigos e segredos esquecidos.</textarea></label><label>Equipamento<textarea id="equipment" rows="2">Cajado, livro de feitiços, manto de viagem, mochila</textarea></label><label>Companheiros controlados pela IA (máximo 3 no modo solo)
+<select id="companionsCount"><option value="0">Nenhum — jogar sozinho</option><option value="1">1 companheiro</option><option value="2" selected>2 companheiros</option><option value="3">3 companheiros</option></select></label><p class="muted">Bónus de atributos e talentos de origem serão aplicados numa etapa adicional. Esta ficha inicial não substitui ainda uma ficha SRD integral.</p><button id="start">Criar e iniciar aventura</button><p id="notice" class="notice"></p></div>
 </main><script>
 const $=id=>document.getElementById(id);const campaign=JSON.parse(localStorage.getItem('cv-draft-campaign')||'null');if(!campaign){location.href='/campanhas.html'}
 else $('campaignTitle').textContent=campaign.name;
@@ -27,6 +28,12 @@ const id=crypto.randomUUID();const attrs=Object.fromEntries(ids.map(x=>[x,Number
 const hpbase={Barbarian:12,Fighter:10,Paladin:10,Ranger:10,Bard:8,Cleric:8,Druid:8,Monk:8,Rogue:8,Warlock:8,Sorcerer:6,Wizard:6};
 const hp=Math.max(1,(hpbase[$('cls').value]||8)+Math.floor((attrs.con-10)/2));
 const c={nome:name,raca:$('species').value,classe:$('cls').value,antecedente:$('background').value,nivel:1,pv:hp,pvMax:hp,atributos:attrs,personalidade:$('personality').value,historia:$('history').value,equipamento:$('equipment').value};
+const allies=[
+{name:'Kael',classe:'Guerreiro',papel:'Proteção e combate',nivel:1,pv:12},
+{name:'Lyra',classe:'Clériga',papel:'Cura e conhecimento',nivel:1,pv:10},
+{name:'Neris',classe:'Ladina',papel:'Exploração e armadilhas',nivel:1,pv:9}
+].slice(0,Number($('companionsCount').value));
+c.companheiros=allies;
 const save={character:c,campaign:campaign.name,campaignId:campaign.id,intro:campaign.intro,messages:[],locations:{},currentLocation:'',updated:Date.now()};
 localStorage.setItem('cv-save-'+id,JSON.stringify(save));const index=JSON.parse(localStorage.getItem('cv-save-index')||'[]');index.unshift(id);localStorage.setItem('cv-save-index',JSON.stringify(index));location.href='/solo.html?save='+encodeURIComponent(id);
 };
