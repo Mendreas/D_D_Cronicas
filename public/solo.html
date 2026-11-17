@@ -61,7 +61,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <section class="panel action-panel"><label for="action">O que fazes a seguir?</label>
 <div class="action-row"><textarea id="action" placeholder="Descreve a tua ação: examino a porta, pergunto a Kael, lanço um feitiço..."></textarea>
 <button id="send" disabled>Enviar ação</button></div>
-<div class="bar" style="margin:12px 0 0"><span class="helper">Ctrl + Enter para enviar · A aventura guarda-se automaticamente após cada cena.</span><div class="nav"><button id="roll" class="secondary">🎲 d20</button><span id="dice" class="helper"></span><button id="retryImage" class="secondary" hidden>Tentar imagem novamente</button></div></div>
+<div class="bar" style="margin:12px 0 0"><span class="helper">Ctrl + Enter para enviar · A aventura guarda-se automaticamente após cada cena.</span><div class="nav"><button id="roll" class="secondary">🎲 d20</button><span id="dice" class="helper"></span><button id="retryStart" class="secondary" hidden>Tentar iniciar novamente</button><button id="retryImage" class="secondary" hidden>Tentar imagem novamente</button></div></div>
 <div id="notice" role="status"></div></section>
 </main>
 <div id="modalBackdrop" class="modal-backdrop" hidden role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button class="secondary" id="modalClose">Fechar ✕</button></div><div id="modalBody"></div></div></div>
@@ -175,7 +175,7 @@ async function begin(){
  if(!code()){showAccess();return}
  if(messages.some(m=>m.role==='assistant')||busy)return;
  if(firstAttempted)return;
- firstAttempted=true;
+ firstAttempted=true;$('retryStart').hidden=true;
  const intro=game.intro||'Apresenta o início de uma aventura original, com o grupo de quatro personagens reunido.';
  await runTurn('Apresenta a primeira cena da campanha: '+intro+'. O meu grupo está comigo. Não escolhas a minha primeira ação.',{initial:true});
 }
@@ -188,6 +188,7 @@ $('accessSave').onclick=()=>{
 };
 $('saveBtn').onclick=()=>saveGame(true);
 $('retryImage').onclick=()=>{if(scene)void illustrate(scene,true)};
+$('retryStart').onclick=()=>{firstAttempted=false;$('retryStart').hidden=true;void begin()};
 $('roll').onclick=()=>{const r=abilityCheck(char,'int');$('dice').textContent='d20 '+r.die+' '+(r.bonus>=0?'+':'')+r.bonus+' = '+r.total};
 const backdrop=$('modalBackdrop');
 $('modalClose').onclick=()=>backdrop.hidden=true;
