@@ -89,6 +89,19 @@ function showAccess(){ $('accessBar').hidden=!!code();if(!code())setNotice('Intr
 function saveGame(announce=false){
  game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.updated=Date.now();
  localStorage.setItem(saveKey,JSON.stringify(game));
+ const profileId=game.characterId||char.id;
+ if(profileId){
+  const pkey='cv-character-'+profileId;
+  const existing=JSON.parse(localStorage.getItem(pkey)||'null');
+  if(existing){
+   const next={...existing,equipamento:char.equipamento,personalidade:char.personalidade,
+     historia:char.historia,updated:Date.now()};
+   if(Number(char.nivel||1)>Number(existing.nivel||1)){
+     next.nivel=char.nivel;next.pvMax=char.pvMax;next.pv=char.pv;
+   }
+   localStorage.setItem(pkey,JSON.stringify(next));
+  }
+ }
  if(announce)setNotice('Aventura guardada neste navegador.');
 }
 function render(){
