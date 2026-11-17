@@ -32,7 +32,22 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 </section>
 <div id="appSection" hidden>
 <section class="bar"><div>Ligado como <strong id="userLabel"></strong></div><button class="secondary" id="logoutBtn">Terminar sessão</button></section>
-<section id="lobbySection"><h2>Salas de aventura</h2><label>Código de acesso do jogo (GAME_ACCESS_CODE)<input id="gameCode" type="password" placeholder="O mesmo código do jogo individual"></label><button class="secondary" id="codeSave">Confirmar código</button><p class="muted">Cria uma sala e envia o código de convite à tua filha, ou entra numa sala que já exista.</p>
+<section id="lobbySection">
+<h2>1. Escolher personagem</h2>
+<p class="muted">A tua personagem pertence à tua conta, e não à sala. Pode participar em várias campanhas.</p>
+<label>Personagem existente<select id="profileSelect"><option value="">Nova personagem</option></select></label>
+<div class="row">
+<label>Nome<input id="profileName" maxlength="80" value="Mendreas"></label>
+<label>Espécie<select id="profileRace"><option>Elfo</option><option>Humano</option><option>Anão</option><option>Halfling</option><option>Draconato</option><option>Gnomo</option><option>Golias</option><option>Orc</option><option>Tiefling</option></select></label>
+</div>
+<div class="row">
+<label>Classe<select id="profileClass"><option>Wizard</option><option>Fighter</option><option>Rogue</option><option>Cleric</option><option>Bard</option><option>Druid</option><option>Ranger</option><option>Paladin</option><option>Warlock</option><option>Monk</option><option>Sorcerer</option><option>Barbarian</option></select></label>
+<label>Nível<input id="profileLevel" type="number" min="1" max="20" value="1"></label>
+</div>
+<p class="muted">Esta é a ficha básica da versão de testes; atributos completos e progressão SRD ficam para a próxima iteração.</p>
+<button id="profileSave">Guardar personagem</button>
+<hr style="border:0;border-top:1px solid #48566b;margin:22px 0">
+<h2>2. Escolher campanha e sala</h2><label>Código de acesso do jogo (GAME_ACCESS_CODE)<input id="gameCode" type="password" placeholder="O mesmo código do jogo individual"></label><button class="secondary" id="codeSave">Confirmar código</button><p class="muted">Cria uma sala e envia o código de convite à tua filha, ou entra numa sala que já exista.</p>
 <label>Campanha<select id="campaignChoice">
 <option value="veu">O Limiar do Véu — ruínas e mistério</option>
 <option value="farol">O Farol de Cinzabruma — intriga costeira</option>
@@ -78,6 +93,7 @@ let sb,user,room,channel,knownMessages=[],players=[],isHost=false;
 let turn=null,turnMembers=[],myAction=null,turnBusy=false,autoAttempt=-1;
 const campaignIntros={veu:'Aventura original nas ruínas de Blackwood e o Véu antigo.',farol:'Aventura original sobre o farol apagado e os navios desaparecidos de Cinzabruma.',estrelas:'Aventura original no observatório de Serath e mapas de um céu impossível.'};
 let pollHandle=null,artBusy=false,lastSceneUrl='',lastSceneMessage='';
+let profiles=[],selectedProfile=null;
 const status=m=>$('status').textContent=m;
 $('gameCode').value=sessionStorage.getItem('dnd-game-code')||'';
 $('codeSave').onclick=()=>{sessionStorage.setItem('dnd-game-code',$('gameCode').value.trim());status('Código guardado para esta sessão.');};
@@ -96,15 +112,57 @@ async function updateAuth(){show('authSection',!user);show('appSection',!!user);
 $('loginBtn').onclick=async()=>{setBusy('loginBtn',true);try{await query(await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value}));status('Sessão iniciada.')}catch(e){err(e)}finally{setBusy('loginBtn',false)}};
 $('signupBtn').onclick=async()=>{setBusy('signupBtn',true);try{let x=await query(await sb.auth.signUp({email:$('email').value.trim(),password:$('password').value,options:{emailRedirectTo:location.origin+'/multijogador.html'}}));status(x.session?'Conta criada.':'Consulta o teu email e confirma o registo antes de entrar.')}catch(e){err(e)}finally{setBusy('signupBtn',false)}};
 $('logoutBtn').onclick=async()=>{await leaveRoom();await sb.auth.signOut();};
-async function showLobby(){show('lobbySection',true);show('roomSection',false);
+async function showLobby(){show('lobbySection',true);show('roomSection',false);await loadProfiles();
  const data=await query(await sb.from('game_rooms').select('id,title,invite_code,owner_id').order('created_at',{ascending:false}));const dest=$('roomsList');dest.replaceChildren();
  const title=document.createElement('h3');title.textContent='As tuas salas';dest.append(title);
  if(!data.length){const p=document.createElement('p');p.className='muted';p.textContent='Ainda não participas em nenhuma sala.';dest.append(p)}
  for(const r of data){const b=document.createElement('button');b.className='secondary';b.style.margin='5px';b.textContent=r.title;b.onclick=()=>openRoom(r.id);dest.append(b)}
 }
+async function loadProfiles(){
+ if(!sb||!user)return;
+ profiles=await query(await sb.from('game_profiles').select('id,name,sheet').order('updated_at',{ascending:false}));
+ const sel=$('profileSelect');const prev=selectedProfile?.id||localStorage.getItem('cv-profile-'+user.id)||'';
+ sel.replaceChildren();
+ const empty=document.createElement('option');empty.value='';empty.textContent='Criar nova personagem';sel.append(empty);
+ for(const profile of profiles){const o=document.createElement('option');o.value=profile.id;o.textContent=profile.name+' · nível '+(profile.sheet?.nivel||1);sel.append(o)}
+ const match=profiles.find(p=>p.id===prev)||profiles[0]||null;
+ sel.value=match?.id||'';selectedProfile=match;showProfileForm(match);
+}
+function showProfileForm(profile){
+ $('profileName').value=profile?.name||'Mendreas';
+ $('profileRace').value=profile?.sheet?.raca||'Elfo';
+ $('profileClass').value=profile?.sheet?.classe||'Wizard';
+ $('profileLevel').value=profile?.sheet?.nivel||1;
+}
+$('profileSelect').onchange=()=>{
+ selectedProfile=profiles.find(p=>p.id===$('profileSelect').value)||null;
+ showProfileForm(selectedProfile);
+};
+$('profileSave').onclick=async()=>{
+ setBusy('profileSave',true);
+ try{
+  const name=$('profileName').value.trim();
+  if(!name)throw Error('Escreve um nome para a personagem.');
+  const profileId=selectedProfile?.id||crypto.randomUUID();
+  const sheet={...(selectedProfile?.sheet||{}),raca:$('profileRace').value,classe:$('profileClass').value,
+   nivel:Number($('profileLevel').value),pv:selectedProfile?.sheet?.pv||8};
+  await query(await sb.from('game_profiles').upsert({id:profileId,owner_id:user.id,name,sheet,updated_at:new Date().toISOString()}));
+  localStorage.setItem('cv-profile-'+user.id,profileId);
+  await loadProfiles();status('Personagem guardada. Já podes escolher uma campanha ou sala.');
+ }catch(e){err(e)}finally{setBusy('profileSave',false)}
+};
+function requireProfile(){
+ if(!selectedProfile)throw Error('Primeiro guarda uma personagem e seleciona-a na lista.');
+ return selectedProfile;
+}
+async function connectProfileToRoom(roomId){
+ const profile=requireProfile();
+ const existing=await query(await sb.from('game_characters').select('id').eq('room_id',roomId).eq('user_id',user.id).maybeSingle());
+ if(!existing)await query(await sb.from('game_characters').insert({room_id:roomId,user_id:user.id,profile_id:profile.id,name:profile.name,sheet:profile.sheet}));
+}
 function name(){const n=$('displayName').value.trim();if(n.length<1||n.length>60)throw Error('Escreve o teu nome de jogador (até 60 caracteres).');return n}
-$('createBtn').onclick=async()=>{setBusy('createBtn',true);try{const id=await query(await sb.rpc('create_campaign_room',{p_title:$('roomTitle').value.trim(),p_player_name:name(),p_campaign_id:$('campaignChoice').value,p_campaign_intro:campaignIntros[$('campaignChoice').value]}));await openRoom(id)}catch(e){err(e)}finally{setBusy('createBtn',false)}};
-$('joinBtn').onclick=async()=>{setBusy('joinBtn',true);try{const id=await query(await sb.rpc('join_game_room',{p_invite_code:$('inviteInput').value.trim().toUpperCase(),p_player_name:name()}));await openRoom(id)}catch(e){err(e)}finally{setBusy('joinBtn',false)}};
+$('createBtn').onclick=async()=>{setBusy('createBtn',true);try{requireProfile();const id=await query(await sb.rpc('create_campaign_room',{p_title:$('roomTitle').value.trim(),p_player_name:name(),p_campaign_id:$('campaignChoice').value,p_campaign_intro:campaignIntros[$('campaignChoice').value]}));await connectProfileToRoom(id);await openRoom(id)}catch(e){err(e)}finally{setBusy('createBtn',false)}};
+$('joinBtn').onclick=async()=>{setBusy('joinBtn',true);try{requireProfile();const id=await query(await sb.rpc('join_game_room',{p_invite_code:$('inviteInput').value.trim().toUpperCase(),p_player_name:name()}));await connectProfileToRoom(id);await openRoom(id)}catch(e){err(e)}finally{setBusy('joinBtn',false)}};
 async function openRoom(id){
  await leaveRoom();const data=await query(await sb.from('game_rooms').select('*').eq('id',id).single());room=data;isHost=data.owner_id===user.id;
  $('roomTitleView').textContent=data.title+' · '+({veu:'O Limiar do Véu',farol:'O Farol de Cinzabruma',estrelas:'As Chaves das Estrelas'}[data.campaign_id]||'Campanha');$('inviteView').textContent=data.invite_code;show('lobbySection',false);show('roomSection',true);show('gmBtn',isHost);
@@ -130,8 +188,10 @@ $('leaveBtn').onclick=async()=>{await leaveRoom();await showLobby()};
 $('copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(room.invite_code);status('Código de convite copiado.')}catch(e){err(e)}};
 $('charSave').onclick=async()=>{if(!room)return;setBusy('charSave',true);try{
  const sheet={raca:$('charRace').value,classe:$('charClass').value,nivel:Number($('charLevel').value),pv:Number($('charHp').value),equipamento:$('charNotes').value};
- const row={room_id:room.id,user_id:user.id,name:$('charName').value.trim(),sheet,updated_at:new Date().toISOString()};
- await query(await sb.from('game_characters').upsert(row,{onConflict:'room_id,user_id'}));status('Ficha guardada na nuvem.');
+ const row={room_id:room.id,user_id:user.id,profile_id:selectedProfile?.id||null,name:$('charName').value.trim(),sheet,updated_at:new Date().toISOString()};
+ await query(await sb.from('game_characters').upsert(row,{onConflict:'room_id,user_id'}));
+ if(row.profile_id)await query(await sb.from('game_profiles').update({name:row.name,sheet,updated_at:row.updated_at}).eq('id',row.profile_id));
+ status('Ficha da sala e personagem permanente atualizadas.');
  }catch(e){err(e)}finally{setBusy('charSave',false)}};
 async function refresh(){
  if(!room||turnBusy)return;
