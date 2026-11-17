@@ -27,7 +27,7 @@ export default async function(request){
    const data=await request.json();roomId=data.room_id;
    if(typeof roomId!=='string'||!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(roomId))
      return respond({error:'Sala inválida.'},400);
-   const rooms=await admin('game_rooms?id=eq.'+encodeURIComponent(roomId)+'&select=id,title,owner_id');
+   const rooms=await admin('game_rooms?id=eq.'+encodeURIComponent(roomId)+'&select=id,title,owner_id,campaign_id,campaign_intro');
    if(!rooms.length)return respond({error:'Sala não encontrada.'},404);
    const members=await admin('game_players?room_id=eq.'+encodeURIComponent(roomId)+'&select=user_id,display_name');
    if(!members.some(p=>p.user_id===user.id))return respond({error:'Não pertences a esta sala.'},403);
@@ -37,6 +37,7 @@ export default async function(request){
    const actions=await admin('game_turn_actions?room_id=eq.'+encodeURIComponent(roomId)+'&turn_number=eq.'+turnNo+'&select=user_id,content');
    if(actions.length!==participants.length)throw Error('As ações ainda não estão completas.');
    const charSheets=await admin('game_characters?room_id=eq.'+encodeURIComponent(roomId)+'&select=user_id,name,sheet');
+   const companions=await admin('game_companions?room_id=eq.'+encodeURIComponent(roomId)+'&select=name,archetype,sheet');
    const prior=(await admin('game_messages?room_id=eq.'+encodeURIComponent(roomId)+'&role=eq.gm&select=content,created_at&order=created_at.desc&limit=12')).reverse();
    const input=[
      ...prior.map(m=>({role:'assistant',content:m.content})),
@@ -45,7 +46,7 @@ export default async function(request){
        return (p?.display_name||'Jogador')+': '+a.content;
      }).join('\n')}
    ];
-   const instructions='És Mestre de Jogo de uma aventura cooperativa de fantasia heroica, em português europeu. Os jogadores estão em locais diferentes e tomam decisões por turnos assíncronos. Considera simultaneamente TODAS as ações do turno, sem ignorar ninguém. Não inventes ações dos jogadores nem dados lançados. Narra o resultado num máximo de quatro parágrafos, explica as consequências e termina com uma nova situação que exija decisões de cada jogador. Não avances para outro turno. Título: '+rooms[0].title+'. Personagens: '+JSON.stringify(charSheets.map(c=>({jogador:members.find(p=>p.user_id===c.user_id)?.display_name,nome:c.name,ficha:c.sheet}))).slice(0,6500);
+   const instructions='És Mestre de Jogo de uma aventura cooperativa de fantasia heroica, em português europeu. Os jogadores estão em locais diferentes e tomam decisões por turnos assíncronos. Considera simultaneamente TODAS as ações do turno, sem ignorar ninguém. Não inventes ações dos jogadores nem dados lançados. Narra o resultado num máximo de quatro parágrafos, explica as consequências e termina com uma nova situação que exija decisões de cada jogador. Não avances para outro turno. Título: '+rooms[0].title+'. Contexto da campanha: '+(rooms[0].campaign_intro||'')+'. Controlas até dois companheiros IA, cujas ações são tuas para resolver e nunca substituem as decisões dos dois humanos. Companheiros: '+JSON.stringify(companions).slice(0,3000)+'. Personagens humanas: '+JSON.stringify(charSheets.map(c=>({jogador:members.find(p=>p.user_id===c.user_id)?.display_name,nome:c.name,ficha:c.sheet}))).slice(0,6500);
    const aiRes=await fetch('https://api.openai.com/v1/responses',{
      method:'POST',
      headers:{Authorization:'Bearer '+ai,'Content-Type':'application/json'},
