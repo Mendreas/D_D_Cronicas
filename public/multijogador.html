@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crónicas do Véu — Multijogador</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10151f;color:#f2e9d9}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#253248,#10151f 75%);min-height:100vh}
+header{padding:18px max(18px,calc((100vw - 1190px)/2));border-bottom:1px solid #515364;background:#151c28}
+h1{margin:0;font:700 26px Georgia,serif;color:#edc681}header small{color:#b2c0cb}
+main{max-width:1190px;margin:auto;padding:22px;display:grid;gap:17px}
+h2{font:700 22px Georgia,serif;color:#e9c481;margin:0 0 12px}
+p{line-height:1.6}a{color:#eecb94}
+section{background:#1b2532;border:1px solid #36485e;border-radius:14px;padding:20px}
+input,textarea{border:1px solid #4e6076;border-radius:8px;background:#0b1520;color:#fff;padding:11px;font:15px system-ui;min-width:0;width:100%}
+label{display:block;font-size:13px;color:#b7c5d4;margin:8px 0}
+button{border:1px solid #b68e4d;background:#b68e4d;color:#141619;padding:10px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:transparent;color:#e9c481}
+button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row>*{flex:1}.row>button{flex:0 0 auto}
+.grid{display:grid;grid-template-columns:310px 1fr;gap:17px}
+.messages{height:54vh;min-height:300px;overflow:auto;border:1px solid #405068;border-radius:10px;padding:12px;background:#121d2a}
+.msg{background:#253446;border:1px solid #40536a;padding:12px;border-radius:9px;margin:10px 0;white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere}.msg.gm{border-color:#9d774a;background:#2b2b32}
+.who{color:#eec78b;font-size:12px;font-weight:700;margin-bottom:6px}.muted{color:#b4c2d1;font-size:13px}#status{color:#f2c78c;min-height:24px}
+[hidden]{display:none!important} .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:770px){.grid{grid-template-columns:1fr}.messages{height:42vh}main{padding:12px}section{padding:15px}}
+</style></head>
+<body><header><h1>✦ Crónicas do Véu</h1><small>Modo multijogador · Lisboa ↔ Açores · <a href="/">Voltar ao jogo individual</a></small></header>
+<main>
+<div id="status" role="status">A iniciar ligação segura...</div>
+<section id="authSection" hidden>
+<h2>Entrar no jogo</h2><p class="muted">Cada jogador utiliza o seu próprio email. Na primeira utilização, seleciona Criar conta e confirma o email enviado pelo Supabase.</p>
+<label>Email<input id="email" type="email" autocomplete="email" placeholder="email@exemplo.pt"></label>
+<label>Palavra-passe<input id="password" type="password" autocomplete="current-password" minlength="12"></label>
+<div class="row"><button id="loginBtn">Entrar</button><button class="secondary" id="signupBtn">Criar conta</button></div>
+</section>
+<div id="appSection" hidden>
+<section class="bar"><div>Ligado como <strong id="userLabel"></strong></div><button class="secondary" id="logoutBtn">Terminar sessão</button></section>
+<section id="lobbySection"><h2>Salas de aventura</h2><p class="muted">Cria uma sala e envia o código de convite à tua filha, ou entra numa sala que já exista.</p>
+<label>O teu nome no jogo<input id="displayName" maxlength="60" placeholder="Mendreas"></label>
+<div class="row"><input id="roomTitle" maxlength="120" value="Aventura de Lisboa e Açores" aria-label="Título da aventura"><button id="createBtn">Criar aventura</button></div>
+<div class="row" style="margin-top:12px"><input id="inviteInput" maxlength="12" placeholder="Código de convite" aria-label="Código de convite"><button id="joinBtn" class="secondary">Entrar por convite</button></div>
+<div id="roomsList"></div>
+</section>
+<div id="roomSection" hidden>
+<section><div class="bar"><div><h2 id="roomTitleView">Aventura</h2><div class="muted">Convite: <strong id="inviteView"></strong> <button class="secondary" id="copyBtn">Copiar</button></div></div><button class="secondary" id="leaveBtn">Ver outras salas</button></div></section>
+<div class="grid">
+<section><h2>A tua personagem</h2>
+<label>Nome<input id="charName" maxlength="80" value="Mendreas"></label>
+<label>Raça<input id="charRace" maxlength="80" value="Elfo"></label>
+<label>Classe<input id="charClass" maxlength="80" value="Mago"></label>
+<label>Nível<input id="charLevel" type="number" min="1" max="20" value="1"></label>
+<label>Pontos de vida<input id="charHp" type="number" min="0" max="999" value="8"></label>
+<label>Equipamento e notas<textarea id="charNotes" rows="4">Cajado e livro de feitiços</textarea></label>
+<button id="charSave">Guardar ficha</button>
+<hr style="border:0;border-top:1px solid #405068;margin:20px 0">
+<h2>Participantes</h2><div id="playersList" class="muted"></div>
+</section>
+<section><div class="bar"><h2>História partilhada</h2><button class="secondary" id="refreshBtn">Atualizar</button></div>
+<div id="messages" class="messages"></div>
+<label>A tua ação<textarea id="action" rows="3" placeholder="Examino a passagem com atenção..."></textarea></label>
+<div class="row"><button id="sendBtn">Enviar ação</button><button id="gmBtn" class="secondary" hidden>🐉 Continuar com o Mestre IA</button></div>
+<p class="muted">As ações são partilhadas entre jogadores. Apenas o criador da sala pode pedir a continuação da IA, evitando narrativas simultâneas. Os custos de IA pertencem ao proprietário da chave OpenAI.</p>
+</section></div>
+</div>
+</div>
+</main>
+<script type="module">
+import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+const $=id=>document.getElementById(id);
+let sb,user,room,channel,knownMessages=[],players=[],isHost=false;
+const status=m=>$('status').textContent=m;
+function show(id,yes){$(id).hidden=!yes}
+function err(e){status('Erro: '+(e?.message||String(e)))}
+async function query(p){if(p.error)throw p.error;return p.data}
+function setBusy(button,yes){$(button).disabled=yes}
+async function init(){
+ const r=await fetch('/.netlify/functions/game-config');const cfg=await r.json();if(!r.ok)throw Error(cfg.error||'Falta configurar o Supabase');
+ sb=createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true}});
+ sb.auth.onAuthStateChange((_event,session)=>{if(session?.user?.id!==user?.id){user=session?.user||null;void updateAuth()}});
+ const {data:{session}}=await sb.auth.getSession();user=session?.user||null;await updateAuth();
+}
+async function updateAuth(){show('authSection',!user);show('appSection',!!user);if(!user){room=null;status('Inicia sessão para jogar.');return}
+ $('userLabel').textContent=user.email;await showLobby();status('Sessão iniciada.')}
+$('loginBtn').onclick=async()=>{setBusy('loginBtn',true);try{await query(await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value}));status('Sessão iniciada.')}catch(e){err(e)}finally{setBusy('loginBtn',false)}};
+$('signupBtn').onclick=async()=>{setBusy('signupBtn',true);try{let x=await query(await sb.auth.signUp({email:$('email').value.trim(),password:$('password').value,options:{emailRedirectTo:location.origin+'/multijogador.html'}}));status(x.session?'Conta criada.':'Consulta o teu email e confirma o registo antes de entrar.')}catch(e){err(e)}finally{setBusy('signupBtn',false)}};
+$('logoutBtn').onclick=async()=>{await leaveRoom();await sb.auth.signOut();};
+async function showLobby(){show('lobbySection',true);show('roomSection',false);
+ const data=await query(await sb.from('game_rooms').select('id,title,invite_code,owner_id').order('created_at',{ascending:false}));const dest=$('roomsList');dest.replaceChildren();
+ const title=document.createElement('h3');title.textContent='As tuas salas';dest.append(title);
+ if(!data.length){const p=document.createElement('p');p.className='muted';p.textContent='Ainda não participas em nenhuma sala.';dest.append(p)}
+ for(const r of data){const b=document.createElement('button');b.className='secondary';b.style.margin='5px';b.textContent=r.title;b.onclick=()=>openRoom(r.id);dest.append(b)}
+}
+function name(){const n=$('displayName').value.trim();if(n.length<1||n.length>60)throw Error('Escreve o teu nome de jogador (até 60 caracteres).');return n}
+$('createBtn').onclick=async()=>{setBusy('createBtn',true);try{const id=await query(await sb.rpc('create_game_room',{p_title:$('roomTitle').value.trim(),p_player_name:name()}));await openRoom(id)}catch(e){err(e)}finally{setBusy('createBtn',false)}};
+$('joinBtn').onclick=async()=>{setBusy('joinBtn',true);try{const id=await query(await sb.rpc('join_game_room',{p_invite_code:$('inviteInput').value.trim().toUpperCase(),p_player_name:name()}));await openRoom(id)}catch(e){err(e)}finally{setBusy('joinBtn',false)}};
+async function openRoom(id){
+ await leaveRoom();const data=await query(await sb.from('game_rooms').select('*').eq('id',id).single());room=data;isHost=data.owner_id===user.id;
+ $('roomTitleView').textContent=data.title;$('inviteView').textContent=data.invite_code;show('lobbySection',false);show('roomSection',true);show('gmBtn',isHost);
+ const chars=await query(await sb.from('game_characters').select('*').eq('room_id',id).eq('user_id',user.id).maybeSingle());
+ if(chars){const sh=chars.sheet||{};$('charName').value=chars.name;$('charRace').value=sh.raca||'';$('charClass').value=sh.classe||'';$('charLevel').value=sh.nivel||1;$('charHp').value=sh.pv??8;$('charNotes').value=sh.equipamento||''}
+ await refresh();
+ channel=sb.channel('room-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'game_messages',filter:'room_id=eq.'+id},()=>{void refresh()}).subscribe();
+ status('Sala aberta. Aventura partilhada ativa.');
+}
+async function leaveRoom(){if(channel&&sb){await sb.removeChannel(channel);channel=null}room=null}
+$('leaveBtn').onclick=async()=>{await leaveRoom();await showLobby()};
+$('copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(room.invite_code);status('Código de convite copiado.')}catch(e){err(e)}};
+$('charSave').onclick=async()=>{if(!room)return;setBusy('charSave',true);try{
+ const sheet={raca:$('charRace').value,classe:$('charClass').value,nivel:Number($('charLevel').value),pv:Number($('charHp').value),equipamento:$('charNotes').value};
+ const row={room_id:room.id,user_id:user.id,name:$('charName').value.trim(),sheet,updated_at:new Date().toISOString()};
+ await query(await sb.from('game_characters').upsert(row,{onConflict:'room_id,user_id'}));status('Ficha guardada na nuvem.');
+ }catch(e){err(e)}finally{setBusy('charSave',false)}};
+async function refresh(){if(!room)return;
+ const [m,p]=await Promise.all([sb.from('game_messages').select('id,role,content,author_id,created_at').eq('room_id',room.id).order('created_at',{ascending:true}).limit(250),sb.from('game_players').select('user_id,display_name').eq('room_id',room.id)]);
+ knownMessages=await query(m);players=await query(p);$('playersList').textContent=players.map(x=>x.display_name).join(' · ');
+ const dest=$('messages');dest.replaceChildren();if(!knownMessages.length)dest.textContent='Ainda não há ações. Escreve a primeira ação da aventura.';
+ for(const msg of knownMessages){const div=document.createElement('div');div.className='msg'+(msg.role==='gm'?' gm':'');const who=document.createElement('div');who.className='who';who.textContent=msg.role==='gm'?'Mestre de Jogo':players.find(p=>p.user_id===msg.author_id)?.display_name||'Jogador';const body=document.createElement('div');body.textContent=msg.content;div.append(who,body);dest.append(div)}dest.scrollTop=dest.scrollHeight;
+}
+$('refreshBtn').onclick=()=>refresh().catch(err);
+$('sendBtn').onclick=async()=>{if(!room)return;const content=$('action').value.trim();if(!content)return;setBusy('sendBtn',true);try{await query(await sb.from('game_messages').insert({room_id:room.id,author_id:user.id,role:'player',content}));$('action').value='';await refresh();status('Ação enviada. O anfitrião pode pedir ao Mestre de Jogo para continuar.')}catch(e){err(e)}finally{setBusy('sendBtn',false)}};
+$('gmBtn').onclick=async()=>{if(!room||!isHost)return;setBusy('gmBtn',true);status('O Mestre de Jogo está a construir a próxima cena...');try{
+ const token=(await sb.auth.getSession()).data.session?.access_token;if(!token)throw Error('Sessão expirada.');
+ const r=await fetch('/.netlify/functions/room-turn',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-game-code':sessionStorage.getItem('dnd-game-code')||''},body:JSON.stringify({room_id:room.id})});const result=await r.json();if(!r.ok)throw Error(result.error||'Erro do Mestre');
+ await refresh();status('Cena atualizada para todos os participantes.');
+ }catch(e){err(e)}finally{setBusy('gmBtn',false)}};
+init().catch(err);
+</script>
+</body></html>
