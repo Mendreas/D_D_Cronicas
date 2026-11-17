@@ -1,12 +1,31 @@
 <!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crónicas do Véu — Campanhas</title>
-<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:linear-gradient(130deg,#111723,#293449);color:#f5ebdc;font:15px/1.6 system-ui;min-height:100vh}main{max-width:1120px;margin:auto;padding:24px}h1,h2{font-family:Georgia,serif;color:#ebc386}h1{font-size:38px}a{color:#eed09d}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.card{padding:23px;background:#1b2431;border:1px solid #46566b;border-radius:14px;display:flex;flex-direction:column}.art{font-size:48px}.card p{color:#b9c9d8;flex:1}button{padding:12px;border:1px solid #b99051;border-radius:8px;background:#b99051;color:#161b22;font-weight:700;cursor:pointer}small{color:#b8c9d6}@media(max-width:720px){.grid{grid-template-columns:1fr}}</style></head>
+<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:linear-gradient(130deg,#111723,#293449);color:#f5ebdc;font:15px/1.6 system-ui;min-height:100vh}main{max-width:1120px;margin:auto;padding:24px}h1,h2{font-family:Georgia,serif;color:#ebc386}h1{font-size:38px} .chosen{padding:12px 18px;background:#28354a;border:1px solid #536681;border-radius:9px;margin:18px 0} .art{width:100%;height:146px;object-fit:cover;border-radius:10px;border:1px solid #586780;display:block}a{color:#eed09d}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.card{padding:23px;background:#1b2431;border:1px solid #46566b;border-radius:14px;display:flex;flex-direction:column}.card p{color:#b9c9d8;flex:1}button{padding:12px;border:1px solid #b99051;border-radius:8px;background:#b99051;color:#161b22;font-weight:700;cursor:pointer}small{color:#b8c9d6}@media(max-width:720px){.grid{grid-template-columns:1fr}}</style></head>
 <body><main><a href="/">← Página inicial</a><h1>Escolher uma aventura</h1><p>Estas três campanhas são originais. Cada uma oferece locais, desafios e personagens diferentes. A edição de referência é SRD 5.2.1 (2024).</p>
-<div class="grid" id="campaigns"></div><p><small>As campanhas oficiais comerciais não são reproduzidas sem autorização. Conteúdos SRD licenciados terão atribuição própria.</small></p></main>
+<div id="chosen" class="chosen"></div><div class="grid" id="campaigns"></div><p><small>As campanhas oficiais comerciais não são reproduzidas sem autorização. Conteúdos SRD licenciados terão atribuição própria.</small></p></main>
 <script>
+const selectedId=new URLSearchParams(location.search).get('personagem')||localStorage.getItem('cv-active-character');
+const character=selectedId?JSON.parse(localStorage.getItem('cv-character-'+selectedId)||'null'):null;
+if(!character){location.replace('/personagens.html')}
+else {document.getElementById('chosen').textContent='Personagem selecionada: '+character.nome+' · '+character.raca+' · '+character.classe+' · Nível '+character.nivel;}
 const campaigns=[
 {id:'veu',name:'O Limiar do Véu',icon:'🌒',level:'Níveis 1–5',desc:'Desaparecimentos junto de ruínas antigas. Uma floresta encantada, uma fortaleza esquecida e uma magia a despertar.',intro:'Começa a aventura em Blackwood, perto das ruínas de uma torre. A missão envolve o desaparecimento de habitantes e um artefacto antigo.'},
 {id:'farol',name:'O Farol de Cinzabruma',icon:'🌊',level:'Níveis 1–4',desc:'Um farol deixou de emitir luz. Barcos desaparecem e uma sociedade secreta vigia o porto.',intro:'Começa no porto de Cinzabruma numa noite chuvosa, junto ao cais e ao farol apagado.'},
 {id:'estrelas',name:'As Chaves das Estrelas',icon:'✨',level:'Níveis 3–8',desc:'Um observatório abandonado conserva mapas de um céu que já não existe. O grupo segue uma constelação impossível.',intro:'Começa perante o observatório de Serath, num planalto sob duas luas, e as suas cúpulas de cristal quebradas.'}
 ];localStorage.setItem('cv-campaign-catalog',JSON.stringify(campaigns));
-const root=document.getElementById('campaigns');for(const c of campaigns){const div=document.createElement('div');div.className='card';const ic=document.createElement('div');ic.className='art';ic.textContent=c.icon;const h=document.createElement('h2');h.textContent=c.name;const lv=document.createElement('small');lv.textContent=c.level;const p=document.createElement('p');p.textContent=c.desc;const b=document.createElement('button');b.textContent='Escolher esta campanha';b.onclick=()=>{localStorage.setItem('cv-draft-campaign',JSON.stringify(c));location.href='/personagem.html?campanha='+encodeURIComponent(c.id)};div.append(ic,h,lv,p,b);root.append(div)}
+const root=document.getElementById('campaigns');for(const c of campaigns){const div=document.createElement('div');div.className='card';const ic=document.createElement('img');ic.className='art';ic.src=c.image||'';ic.alt='Ilustração da campanha '+c.name;ic.loading='lazy';const h=document.createElement('h2');h.textContent=c.name;const lv=document.createElement('small');lv.textContent=c.level;const p=document.createElement('p');p.textContent=c.desc;const b=document.createElement('button');b.textContent='Escolher esta campanha';b.onclick=()=>{
+ if(!character)return location.href='/personagens.html';
+ const saveId=crypto.randomUUID();
+ const allies=[
+ {nome:'Kael',classe:'Guerreiro',papel:'Proteção e combate',nivel:1,pv:12},
+ {nome:'Lyra',classe:'Clériga',papel:'Cura e conhecimento',nivel:1,pv:10},
+ {nome:'Neris',classe:'Ladina',papel:'Exploração e armadilhas',nivel:1,pv:9}
+ ];
+ const ccopy={...character,companheiros:allies};
+ const save={character:ccopy,characterId:selectedId,campaign:c.name,campaignId:c.id,intro:c.intro,
+   messages:[],locations:{},currentLocation:'',updated:Date.now()};
+ localStorage.setItem('cv-save-'+saveId,JSON.stringify(save));
+ const saves=JSON.parse(localStorage.getItem('cv-save-index')||'[]');saves.unshift(saveId);
+ localStorage.setItem('cv-save-index',JSON.stringify(saves));
+ location.href='/solo.html?save='+encodeURIComponent(saveId);
+};div.append(ic,h,lv,p,b);root.append(div)}
 </script></body></html>
