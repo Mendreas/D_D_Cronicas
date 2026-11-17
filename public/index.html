@@ -9,14 +9,15 @@ button.secondary{background:transparent;color:#e6c18b}section{margin:22px 0}.sav
 @media(max-width:650px){.tiles{grid-template-columns:1fr}.save{flex-direction:column;align-items:start}}
 </style></head><body><main><header><div class="glyph">✦</div><h1>Crónicas do Véu</h1><p>Uma aventura de fantasia moldada pelas tuas decisões</p></header>
 <div class="tiles">
-<a class="tile" href="/campanhas.html?modo=solo"><div class="glyph">🧙</div><h2>Jogar Solo</h2><p>Começar uma campanha ou continuar uma aventura guardada, com companheiros controlados pela IA.</p></a>
+<a class="tile" href="/personagens.html"><div class="glyph">🧙</div><h2>Jogar Solo</h2><p>Escolher ou criar a tua personagem e depois iniciar uma campanha. No solo tens sempre três companheiros IA.</p></a>
 <a class="tile" href="/multijogador.html"><div class="glyph">🛡️</div><h2>Multijogador</h2><p>Criar ou aderir a uma sala. Até dois jogadores humanos, turnos assíncronos e companheiros IA.</p></a>
 </div>
-<section class="panel"><h2>Continuar a jogar</h2><div id="saves" class="muted">A consultar as aventuras guardadas neste navegador…</div></section>
-<section class="panel"><h2>O que queremos jogar?</h2><p class="muted">Escolhe entre aventuras originais de exploração, mistério e fantasia heroica, com regras inspiradas no SRD 5.2.1.</p><a class="button" href="/campanhas.html?modo=solo">Escolher campanha</a></section>
+<section class="panel"><h2>As minhas personagens</h2><div id="characters" class="muted"></div><a class="button" href="/personagens.html">Gerir personagens</a></section><section class="panel"><h2>Continuar a jogar</h2><div id="saves" class="muted">A consultar as aventuras guardadas neste navegador…</div></section>
+<section class="panel"><h2>O que queremos jogar?</h2><p class="muted">Escolhe entre aventuras originais de exploração, mistério e fantasia heroica, com regras inspiradas no SRD 5.2.1.</p><a class="button" href="/personagens.html">Escolher personagem e campanha</a></section>
 <footer>Baseado em material de System Reference Document 5.2.1, © Wizards of the Coast LLC, disponibilizado sob CC BY 4.0. Esta é uma implementação independente e em desenvolvimento.</footer></main>
 <script>
 const list=document.getElementById('saves');list.replaceChildren();
+const charList=document.getElementById('characters');const profileIds=JSON.parse(localStorage.getItem('cv-character-index')||'[]');charList.textContent=profileIds.length?profileIds.map(id=>{const x=JSON.parse(localStorage.getItem('cv-character-'+id)||'null');return x?x.nome+' · Nível '+(x.nivel||1):''}).filter(Boolean).join(' · '):'Ainda não existem personagens permanentes nesta versão.';
 const ids=JSON.parse(localStorage.getItem('cv-save-index')||'[]');
 if(!ids.length){list.textContent='Ainda não tens aventuras nesta versão. Podes criar a primeira ou regressar à aventura individual anterior.';const a=document.createElement('a');a.href='/solo.html';a.textContent='Abrir jogo individual anterior';list.append(document.createElement('br'),a)}
 for(const id of ids){let s;try{s=JSON.parse(localStorage.getItem('cv-save-'+id)||'null')}catch{}
