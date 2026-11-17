@@ -7,6 +7,22 @@ const activeSaveId=new URLSearchParams(location.search).get('save');
 const STORE=activeSaveId?'cv-save-'+activeSaveId:'cronicas-do-veu-netlify-v1';
 let saveData=activeSaveId?JSON.parse(localStorage.getItem(STORE)||'null'):null;
 let baseCharacter=saveData?.character||{};
+const permanentId=saveData?.characterId||saveData?.character?.id||null;
+const currentProfile=permanentId?JSON.parse(localStorage.getItem('cv-character-'+permanentId)||'null'):null;
+if(currentProfile&&saveData?.character){
+ // A progressão do perfil prevalece sobre saves mais antigos.
+ const oldLevel=Number(saveData.character.nivel||1),nextLevel=Number(currentProfile.nivel||1);
+ if(nextLevel>oldLevel||Number(currentProfile.experiencia||0)>Number(saveData.character.experiencia||0)){
+   baseCharacter={...saveData.character,...currentProfile,companheiros:saveData.character.companheiros||[]};
+ }
+}
+if(activeSaveId&&baseCharacter){
+ baseCharacter.companheiros=[
+  {nome:'Kael',classe:'Guerreiro',papel:'Proteção e combate',nivel:1,pv:12},
+  {nome:'Lyra',classe:'Clériga',papel:'Cura e conhecimento',nivel:1,pv:10},
+  {nome:'Neris',classe:'Ladina',papel:'Exploração e armadilhas',nivel:1,pv:9}
+ ];
+}
 let currentLocation=saveData?.currentLocation||'';
 let imageLoading=false;
 $('characterToggle').onclick=()=>document.getElementById('sheetPanel').classList.toggle('open');
@@ -24,6 +40,16 @@ async function loadImage(){const db=await openDB();return new Promise((resolve,r
 async function save(){
  const payload={...(saveData||{}),character:character(),messages,currentLocation,updated:Date.now()};
  saveData=payload;localStorage.setItem(STORE,JSON.stringify(payload));
+ if(permanentId){
+   const current=JSON.parse(localStorage.getItem('cv-character-'+permanentId)||'null');
+   const next={...payload.character,id:permanentId,updated:Date.now()};
+   delete next.companheiros;
+   if(!current||Number(next.nivel||1)>Number(current.nivel||1)
+      ||Number(next.experiencia||0)>Number(current.experiencia||0)
+      ||(Number(next.nivel||1)===Number(current.nivel||1)&&Number(next.experiencia||0)===Number(current.experiencia||0))){
+     localStorage.setItem('cv-character-'+permanentId,JSON.stringify(next));
+   }
+ }
  $('notice').textContent='Aventura guardada neste navegador.';
 }
 $('send').onclick=async()=>{if(busy)return;const action=$('action').value.trim()||(messages.length?'':((saveData?.intro||'Começa uma nova aventura de fantasia com um mistério emocionante e escolhas iniciais.')));if(!action)return;$('action').value='';const prior=messages.slice();messages.push({role:'user',content:action});render();busy=true;$('send').disabled=true;$('genimg').disabled=true;$('notice').textContent='O Mestre de Jogo está a preparar a cena...';try{const response=await request('/api/story',{character:character(),messages,campaign:saveData?.campaign,intro:saveData?.intro,lastLocation:currentLocation});
@@ -58,7 +84,7 @@ async function showLocationImage(){
 }
 $('genimg').onclick=()=>showLocationImage();
 
-(async()=>{try{const s=JSON.parse(localStorage.getItem(STORE)||'{}');fill(s.character);messages=Array.isArray(s.messages)?s.messages:[];render();$('locationTitle').textContent='Local: '+(currentLocation||'a descobrir').replaceAll('-',' ');
+(async()=>{try{const s=JSON.parse(localStorage.getItem(STORE)||'{}');fill(baseCharacter?.nome?baseCharacter:s.character);messages=Array.isArray(s.messages)?s.messages:[];render();$('locationTitle').textContent='Local: '+(currentLocation||'a descobrir').replaceAll('-',' ');
  currentImage=await loadImage();renderImage();
  if(activeSaveId&&!messages.length){$('action').value='';$('notice').textContent='Personagem pronta. Clica em Iniciar aventura para começar a campanha.'}
  else if(messages.length&&!currentImage)await showLocationImage();
