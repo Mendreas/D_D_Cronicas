@@ -49,7 +49,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 </style></head>
 <body>
 <header><div class="brand">✦ Crónicas do Véu</div>
-<nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa-local">Mapa local</button><button class="secondary" data-view="mapa-geral">Mapa geral</button><button id="saveBtn">Guardar</button></nav>
+<nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa-local">Mapa local</button><button class="secondary" data-view="mapa-geral">Mapa geral</button><button id="saveBtn">Guardar</button><button id="logoutBtn" class="secondary" title="Terminar sessão Supabase">Sair</button></nav>
 <div id="campaignTitle">Aventura solo</div></header>
 <main>
 <div id="accessBar" class="access" hidden><span>Para jogar, inicia sessão na tua conta Supabase.</span> <a href="/login.html">Entrar</a></div>
@@ -70,7 +70,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <div id="modalBackdrop" class="modal-backdrop" hidden role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button class="secondary" id="modalClose">Fechar ✕</button></div><div id="modalBody"></div></div></div>
 <script type="module">
 import {abilityCheck,proficiencyBonus,modifier} from '/rules-2024.mjs';
-import {gameToken,requireLogin} from '/auth-client.mjs';
+import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
 const $=id=>document.getElementById(id);
 const saveId=new URLSearchParams(location.search).get('save');
 const saveKey=saveId?'cv-save-'+saveId:null;
@@ -291,6 +291,7 @@ async function begin(){
 $('send').onclick=()=>{const action=$('action').value.trim();if(!action||busy)return;$('action').value='';void runTurn(action)};
 $('action').addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();$('send').click()}});
 $('saveBtn').onclick=()=>saveGame(true);
+$('logoutBtn').onclick=async()=>{const sb=await gameClient();await sb.auth.signOut();location.assign('/login.html')};
 $('retryImage').onclick=()=>{if(scene)void illustrate(scene,true)};
 $('retryStart').onclick=()=>{firstAttempted=false;$('retryStart').hidden=true;void begin()};
 $('roll').onclick=()=>{const r=abilityCheck(char,'int');$('dice').textContent='d20 '+r.die+' '+(r.bonus>=0?'+':'')+r.bonus+' = '+r.total};
