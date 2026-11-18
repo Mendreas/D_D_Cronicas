@@ -77,7 +77,7 @@ export default async function(request){
       body:bytes,signal:AbortSignal.timeout(15000)
     });
     if(!uploaded.ok)return reply({error:'Storage: '+(await uploaded.text()).slice(0,350)},502);
-    const updated=await api('/rest/v1/game_scene_images?'+params.toString().replace('select=storage_path%2Cupdated_at&',''),{
+    const updated=await api('/rest/v1/game_scene_images?scope=eq.location_base&campaign_id=eq.'+encodeURIComponent(campaign)+'&location_id=eq.'+encodeURIComponent(location)+'&variant=eq.'+variant,{
       method:'PATCH',
       data:{updated_at:new Date().toISOString(),prompt:'imagem-premium-substituida-manualmente'},
       headers:{'Content-Type':'application/json','Prefer':'return=representation'}
