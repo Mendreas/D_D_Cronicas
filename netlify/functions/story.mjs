@@ -31,13 +31,13 @@ export default async (request) => {
     if(!r.ok) throw Error(result.error?.message||`Erro OpenAI ${r.status}`);
     const txt=(result.output||[]).flatMap(x=>x.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('\n').trim();
     if(!txt) throw Error('A IA não devolveu texto.');
-    const xpMatch=txt.match(/\\[XP:(0|25|50|75|100)\\]/i);
+    const xpMatch=txt.match(/\[XP:(0|25|50|75|100)\]/i);
     const experienceAward=isOpeningScene?0:Number(xpMatch?.[1]||0);
     const match=txt.match(/\[LOCAL:([a-z0-9-]{2,80})\]\s*$/i);
     // A localização da abertura é uma regra da campanha, não uma escolha livre do modelo.
     const location=isOpeningScene&&campaignStart?campaignStart:
       (match?match[1].toLowerCase():(lastLocation||'local-inicial'));
-    const clean=(match?txt.slice(0,match.index).trim():txt).replace(/\\[XP:\\d+\\]/gi,'').trim();
+    const clean=(match?txt.slice(0,match.index).trim():txt).replace(/\[XP:\d+\]/gi,'').trim();
     // O identificador do modelo pode ficar atrasado face à sua própria narrativa.
     // Corrigir apenas um regresso explícito à torre, não meras referências às ruínas.
     const returnedToTower=campaign==='O Limiar do Véu'&&lastLocation==='aldeia-blackwood'
@@ -77,7 +77,7 @@ export default async (request) => {
         ['observatorio-exterior', /(?:chegas?|regressas?|aproximas-te|encontras?-te)\b[^.!?]{0,90}\b(?:exterior do observat[oó]rio|entrada do observat[oó]rio|planalto)/i]
       ]
     };
-    const sentences=clean.split(/(?<=[.!?])\s+|\\n+/).filter(Boolean);
+    const sentences=clean.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
     const lastPhysicalMove=sentences.reduce((found,sentence)=>{
       for(const [id,pattern] of (destinations[campaign]||[]))if(pattern.test(sentence))return id;
       return found;
