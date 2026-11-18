@@ -6,6 +6,7 @@ const reply=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Contro
 const normalize=s=>String(s||'').trim().toLowerCase().replace(/_/g,'-');
 const idPattern=/^[a-z0-9-]{2,80}$/;
 const campaignIds=new Set(['veu','farol','estrelas']);
+const aliasMap={"veu|aldeia-blackwood":"aldeia-blackwood","veu|vila-blackwood":"aldeia-blackwood","veu|blackwood-aldeia":"aldeia-blackwood","veu|aldeia-proxima":"aldeia-blackwood","veu|mercado-blackwood":"aldeia-blackwood","veu|trilha-sombria":"trilha-sombria","veu|floresta-blackwood":"trilha-sombria","veu|trilha-sombreada-floresta":"trilha-sombria","veu|caminho-blackwood":"trilha-sombria","veu|trilho-floresta":"trilha-sombria","veu|circulo-pedras":"circulo-pedras","veu|circulo-ritual-floresta":"circulo-pedras","veu|clareira-dos-menires":"circulo-pedras","veu|clareira-sagrada":"circulo-pedras","veu|blackwood-ruinas":"blackwood-ruinas","veu|ruinas-torre-blackwood":"blackwood-ruinas","veu|blackwood-ruinas-torre-exterior":"blackwood-ruinas","veu|ruinas-blackwood":"blackwood-ruinas","veu|torre-blackwood":"blackwood-ruinas","veu|torre-abandonada":"blackwood-ruinas","veu|sala-ruinas":"sala-ruinas","veu|interior-torre":"sala-ruinas","veu|sala-da-torre":"sala-ruinas","veu|ruinas-sala":"sala-ruinas","veu|corredor-estreito-ruinas":"sala-ruinas","veu|escadaria-torre":"escadaria-torre","veu|escadas-torre":"escadaria-torre","veu|escadaria-espiral":"escadaria-torre","veu|escadaria-antiga":"escadaria-torre","veu|cripta-subterranea":"cripta-subterranea","veu|cripta-blackwood":"cripta-subterranea","veu|cripta-antiga":"cripta-subterranea","veu|camara-funeraria":"cripta-subterranea","veu|camara-ritual":"camara-ritual","veu|camara-do-artefacto":"camara-ritual","veu|sala-do-artefacto":"camara-ritual","veu|sala-ritual":"camara-ritual","veu|camara-magica":"camara-ritual","farol|porto-cinzabruma":"porto-cinzabruma","farol|porto-nebuloso":"porto-cinzabruma","farol|porto-tempestade":"porto-cinzabruma","farol|cais-cinzabruma":"porto-cinzabruma","farol|porto":"porto-cinzabruma","farol|vila-cinzabruma":"vila-cinzabruma","farol|aldeia-cinzabruma":"vila-cinzabruma","farol|vila-costeira":"vila-cinzabruma","farol|mercado-cinzabruma":"vila-cinzabruma","farol|falesia-tempestuosa":"falesia-tempestuosa","farol|falesias-abaixo-do-farol":"falesia-tempestuosa","farol|falesias-do-norte":"falesia-tempestuosa","farol|falesia":"falesia-tempestuosa","farol|falesias":"falesia-tempestuosa","farol|exterior-farol":"exterior-farol","farol|farol-exterior-tempestade":"exterior-farol","farol|farol-exterior":"exterior-farol","farol|farol-cinzabruma":"exterior-farol","farol|base-do-farol":"exterior-farol","farol|interior-farol":"interior-farol","farol|farol-interior":"interior-farol","farol|escadaria-farol":"interior-farol","farol|salas-farol":"interior-farol","farol|tunel-contrabandistas":"tunel-contrabandistas","farol|tunel-contrabando":"tunel-contrabandistas","farol|passagem-secreta-farol":"tunel-contrabandistas","farol|tunel-subterraneo":"tunel-contrabandistas","farol|sala-da-lanterna":"sala-da-lanterna","farol|topo-do-farol":"sala-da-lanterna","farol|lanterna-farol":"sala-da-lanterna","farol|sala-luz":"sala-da-lanterna","farol|cume-farol":"sala-da-lanterna","farol|gruta-oculta":"gruta-oculta","farol|gruta-marinha":"gruta-oculta","farol|gruta-da-tempestade":"gruta-oculta","farol|caverna-tempestade":"gruta-oculta","farol|gruta-secreta":"gruta-oculta","estrelas|observatorio-exterior":"observatorio-exterior","estrelas|observatorio-serath":"observatorio-exterior","estrelas|observatorio-exterior-noturno":"observatorio-exterior","estrelas|exterior-observatorio":"observatorio-exterior","estrelas|observatorio":"observatorio-exterior","estrelas|observatorio-cupula":"observatorio-cupula","estrelas|cupula-principal":"observatorio-cupula","estrelas|observatorio-cupula-principal":"observatorio-cupula","estrelas|cupula-cristal":"observatorio-cupula","estrelas|sala-dos-mapas":"sala-dos-mapas","estrelas|sala-celeste-principal":"sala-dos-mapas","estrelas|cartografia-astral":"sala-dos-mapas","estrelas|sala-mapas":"sala-dos-mapas","estrelas|corredor-celeste":"corredor-celeste","estrelas|passagem-das-ruinas":"corredor-celeste","estrelas|corredor-astral":"corredor-celeste","estrelas|corredor-observatorio":"corredor-celeste","estrelas|camara-astral":"camara-astral","estrelas|cripta-estelar":"camara-astral","estrelas|camara-das-estrelas":"camara-astral","estrelas|santuario-astral":"camara-astral","estrelas|biblioteca-estelar":"biblioteca-estelar","estrelas|biblioteca-astral":"biblioteca-estelar","estrelas|arquivo-astral":"biblioteca-estelar","estrelas|biblioteca-observatorio":"biblioteca-estelar","estrelas|jardim-constelacao":"jardim-constelacao","estrelas|jardim-estelar":"jardim-constelacao","estrelas|terraco-das-constelacoes":"jardim-constelacao","estrelas|jardim-observatorio":"jardim-constelacao","estrelas|portal-estelar":"portal-estelar","estrelas|portal-das-estrelas":"portal-estelar","estrelas|santuario-das-chaves":"portal-estelar","estrelas|portal-astral":"portal-estelar","estrelas|camara-portal":"portal-estelar"};
 const BUCKET='scene-images';
 const encoder=new TextEncoder();
 async function sha(input){
@@ -34,7 +35,9 @@ export default async function(request){
   const data=await request.json(),kind=data.kind;
   if(!['location_base','action_detail'].includes(kind))return reply({error:'Tipo de imagem inválido'},400);
   const campaign=normalize(data.campaign_id);
-  const location=normalize(data.location_id);
+  const rawLocation=normalize(data.location_id);
+  const location=aliasMap[campaign+'|'+rawLocation]||rawLocation;
+  const variant=kind==='location_base'?(data.variant==='b'?'b':'a'):'a';
   if(!campaignIds.has(campaign)||!idPattern.test(location))return reply({error:'Campanha ou local inválido'},400);
   const saveId=String(data.save_id||'');
   if(kind==='action_detail'&&!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(saveId))
@@ -43,21 +46,21 @@ export default async function(request){
   const action=String(data.action_text||'').slice(0,1200);
   if(kind==='action_detail'&&!gmText.trim())return reply({error:'Ainda não existe uma cena para ilustrar'},400);
   const actionHash=kind==='action_detail'?await sha(saveId+'|'+location+'|'+gmText+'|'+action):null;
-  const cacheKey=kind==='location_base'?['base',campaign,location].join(':'):
+  const cacheKey=kind==='location_base'?['base',campaign,location,variant].join(':'):
    ['detail',campaign,saveId,location,actionHash].join(':');
-  const filePath=kind==='location_base'?['base',campaign,location+'.jpg'].join('/'):
+  const filePath=kind==='location_base'?['base',campaign,location,variant+'.jpg'].join('/'):
     ['detail',campaign,saveId,location,actionHash+'.jpg'].join('/');
   const params=new URLSearchParams({select:'storage_path',scope:'eq.'+kind,campaign_id:'eq.'+campaign,location_id:'eq.'+location,limit:'1'});
   if(kind==='action_detail'){
     params.set('save_id','eq.'+saveId);params.set('action_hash','eq.'+actionHash);
-  }
+  }else params.set('variant','eq.'+variant);
   const publicUrl=path=>url+'/storage/v1/object/public/'+BUCKET+'/'+path.split('/').map(encodeURIComponent).join('/');
   async function find(){
     const rows=await api('/rest/v1/game_scene_images?'+params.toString());
     return rows?.[0]?.storage_path||'';
   }
   const existing=await find();
-  if(existing)return reply({status:'ready',url:publicUrl(existing),cached:true,kind,location});
+  if(existing)return reply({status:'ready',url:publicUrl(existing),cached:true,kind,location,variant});
   if(data.mode==='lookup'){
     const locks=await api('/rest/v1/game_scene_generation_locks?cache_key=eq.'+
       encodeURIComponent(cacheKey)+'&status=eq.generating&select=updated_at&limit=1');
@@ -112,9 +115,9 @@ export default async function(request){
     method:'POST',
     data:{scope:kind,campaign_id:campaign,location_id:location,
       save_id:kind==='action_detail'?saveId:null,action_hash:actionHash,
-      storage_path:filePath,prompt},
+      variant,storage_path:filePath,prompt:data.mode==='import'?'importado-manualmente':prompt},
     headers:{'Content-Type':'application/json','Prefer':'return=minimal'}});
-  return reply({status:'ready',url:publicUrl(filePath),cached:false,kind,location});
+  return reply({status:'ready',url:publicUrl(filePath),cached:false,kind,location,variant});
  }catch(e){
   return reply({error:String(e.message||e)},400);
  }finally{
