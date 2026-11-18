@@ -44,6 +44,17 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 .local-map{height:235px;border:1px dashed #718199;border-radius:13px;position:relative;background:radial-gradient(circle at center,#31445a,#121e2d 74%);display:grid;place-items:center;text-align:center}
 .local-map::before,.local-map::after{content:'?';position:absolute;color:#aabed3;font-size:23px;top:19%;left:20%}.local-map::after{top:67%;left:75%}
 .local-map span{background:#b69053;color:#121721;border-radius:15px;padding:16px 20px;font-weight:bold;max-width:70%}
+.cv-map-ui{display:flex;flex-direction:column;gap:11px}
+.cv-map-tools{display:flex;flex-wrap:wrap;gap:8px}
+.cv-map-tools button{padding:9px 13px;font-size:12px}
+.cv-map-tools button[aria-pressed="true"]{background:#b88d4c;color:#101922}
+.cv-map-frame{border:1px solid #5b6a76;border-radius:12px;overflow:hidden;background:#1a2633}
+.cv-map-frame svg{display:block;width:100%;height:auto;aspect-ratio:1100/720}
+.cv-map-frame svg g[role="button"]:focus{outline:none;filter:drop-shadow(0 0 9px #f4cb7b)}
+.cv-map-legend{font-size:12px;color:#e5cf9c;white-space:pre-wrap}
+.cv-map-status{font-size:13px;color:#c8d4de;margin:0}
+@keyframes map-pulse{50%{opacity:.5;r:38}}
+.map-pulse{animation:map-pulse 2.5s ease-in-out infinite}
 [hidden]{display:none!important}
 @media(max-width:790px){header{align-items:flex-start}.panels{grid-template-columns:1fr}#chat{height:48vh;min-height:300px}#artBox{height:290px;min-height:290px}.action-row{flex-direction:column}.action-row button{min-height:45px}.stats{grid-template-columns:repeat(2,1fr)}}
 </style></head>
@@ -71,6 +82,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <script type="module">
 import {abilityCheck,proficiencyBonus,modifier} from '/rules-2024.mjs';
 import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
+import {renderCampaignMap} from '/mapas.mjs';
 import {advanceMember,mergeParty,readParty,saveParty} from '/progression.mjs';
 const $=id=>document.getElementById(id);
 const saveId=new URLSearchParams(location.search).get('save');
@@ -486,20 +498,13 @@ function showInventory(){
 }
 function showLocalMap(){
  openModal('Mapa local — '+placeName(scene),root=>{
-  root.append(make('p','Mapa esquemático de exploração. Não representa posições ou distâncias exatas.'));
-  const map=make('div',undefined,'local-map');
-  map.append(make('span',placeName(scene)||'A descobrir'));root.append(map);
-  root.append(make('p','O Mestre ainda não registou saídas e pontos de interesse estruturados. Essas ligações serão acrescentadas quando o motor de exploração estiver concluído.','helper'));
- })
+  renderCampaignMap(root,{campaignId:game.campaignId,currentLocation:scene,visited,mode:'interior'});
+ });
 }
 function showWorldMap(){
- openModal('Mapa geral da campanha',root=>{
-  root.append(make('p','Locais visitados por ordem de descoberta. As ligações não representam distâncias geográficas.'));
-  const path=make('div',undefined,'route');
-  for(let i=0;i<visited.length;i++){if(i)path.append(make('span','→'));path.append(make('span',placeName(visited[i])))}
-  if(!visited.length)path.append(make('p','Ainda não foram descobertos locais.'));
-  root.append(path);root.append(make('p','Um mapa geográfico completo com deslocações será desenvolvido posteriormente.','helper'));
- })
+ openModal('Mapa geral — '+(game.campaign||'Aventura'),root=>{
+  renderCampaignMap(root,{campaignId:game.campaignId,currentLocation:scene,visited,mode:'global'});
+ });
 }
 for(const btn of document.querySelectorAll('[data-view]')){
  btn.onclick=()=>{
