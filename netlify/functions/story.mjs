@@ -1,8 +1,7 @@
+import {requireGameUser,gameAuthError} from './_game-auth.mjs';
 export default async (request) => {
   if (request.method !== 'POST') return Response.json({error:'Método inválido'},{status:405});
-  const pass = process.env.GAME_ACCESS_CODE;
-  const auth = request.headers.get('x-game-code') || '';
-  if (!pass || auth !== pass) return Response.json({error:'Código de acesso inválido ou não configurado no Netlify.'},{status:401});
+  try{await requireGameUser(request)}catch(e){return gameAuthError(e)}
   const key=process.env.OPENAI_API_KEY;
   if(!key) return Response.json({error:'Falta OPENAI_API_KEY no Netlify.'},{status:500});
   try {
