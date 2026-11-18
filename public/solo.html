@@ -93,7 +93,7 @@ if(mislabelledOpening)scene='blackwood-ruinas';
 // mas o marcador LOCAL continuou incorretamente na aldeia.
 const lastNarratedScene=[...messages].reverse().find(m=>m.role==='assistant')?.content||'';
 const mislabelledReturn=game?.campaignId==='veu'&&scene==='aldeia-blackwood'
- &&/(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\\s+(?:de novo\\s+)?(?:[àa]\\s+|para\\s+|junto\\s+[àa]\\s+|perto\\s+d[aeo]\\s+)?(?:entrada\\s+d[aeo]\\s+)?(?:torre|ru[ií]nas)|(?:[àa]\\s+)?entrada\\s+d[aeo]\\s+torre/i.test(lastNarratedScene);
+ &&/(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\s+(?:de novo\s+)?(?:[àa]\s+|para\s+|junto\s+[àa]\s+|perto\s+d[aeo]\s+)?(?:entrada\s+d[aeo]\s+)?(?:torre|ru[ií]nas)|(?:[àa]\s+)?entrada\s+d[aeo]\s+torre/i.test(lastNarratedScene);
 if(mislabelledReturn)scene='blackwood-ruinas';
 const locationNames={
  'veu|aldeia-blackwood':'Aldeia de Blackwood',
