@@ -1,3 +1,4 @@
+import {requireGameUser,gameAuthError} from './_game-auth.mjs';
 // Netlify function — imagens persistentes de local para salas privadas.
 // Authentication: Supabase JWT, membership, and game code. Secret key server-side only.
 const response=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
@@ -8,8 +9,7 @@ export default async function(request){
  const secret=process.env.SUPABASE_SECRET_KEY;
  const openai=process.env.OPENAI_API_KEY;
  if(!url||!pub||!secret||!openai)return response({error:'Configuração de imagens incompleta'},503);
- if(!process.env.GAME_ACCESS_CODE||request.headers.get('x-game-code')!==process.env.GAME_ACCESS_CODE)
-   return response({error:'Código de acesso inválido'},401);
+ try{await requireGameUser(request)}catch(e){return gameAuthError(e)}
  const jwt=(request.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
  if(!jwt)return response({error:'É necessário iniciar sessão'},401);
  const headers={apikey:secret};
