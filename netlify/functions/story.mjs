@@ -64,6 +64,13 @@ export default async (request) => {
       const after=lines.slice(last+1).filter(line=>!/^\s*(?:podes|também podes|em alternativa|ou podes)\b/i.test(line));
       narrative=[...before,...after].join('\n').trim();
     }
-    return Response.json({text:narrative||clean,location:resolvedLocation,choices:choices.length===3?choices:[]});
+    // Garantir sempre três ações mesmo quando a IA omite a lista ou fica sem tokens.
+    const continuation=choices.length===3?choices:
+      /escadaria|escadas/i.test(narrative)&&/inscri[cç][oõ]es|s[ií]mbolos|runa/i.test(narrative)
+      ?['Descer a escadaria com o grupo, atento a armadilhas e perigos.','Examinar as ruínas à procura de outra passagem mais segura.','Investigar os símbolos mágicos antes de avançar (teste de Investigação).']
+      :/inscri[cç][oõ]es|s[ií]mbolos|runa/i.test(narrative)
+      ?['Examinar os símbolos e procurar compreender o seu significado.','Pedir aos companheiros que procurem pistas e passagens ocultas.','Avançar com cautela e observar qualquer reação mágica.']
+      :['Investigar os arredores à procura de pistas e perigos.','Conversar com os companheiros e decidir em conjunto o próximo passo.','Avançar cautelosamente para explorar o que existe à frente.'];
+    return Response.json({text:narrative||clean,location:resolvedLocation,choices:continuation});
   }catch(e){return Response.json({error:String(e.message||e)},{status:400});}
 };
