@@ -53,8 +53,11 @@ if(existing){
 const classes=Object.keys(CLASS_SKILLS);
 for(const id of classes){const op=document.createElement('option');op.value=id;op.textContent=id;$('cls').append(op)}
 $('cls').value=existing?.classe&&CLASS_SKILLS[existing.classe]?existing.classe:'Wizard';
+if(existing?.antecedente&&!BACKGROUNDS[existing.antecedente]){
+ const unavailable=document.createElement('option');unavailable.value='';unavailable.textContent='Escolher antecedente SRD (anterior: '+existing.antecedente+')';unavailable.disabled=true;$('background').append(unavailable);
+}
 for(const name of Object.keys(BACKGROUNDS)){const op=document.createElement('option');op.value=name;op.textContent=name;$('background').append(op)}
-$('background').value=BACKGROUNDS[existing?.antecedente]?existing.antecedente:'Sábio';
+$('background').value=existing?.antecedente?(BACKGROUNDS[existing.antecedente]?existing.antecedente:''):'Sábio';
 const base=(existing?.atributosBase&&Object.values(existing.atributosBase).every(Number.isFinite))
  ?existing.atributosBase:existing?.atributos&&STANDARD_ARRAY.every(n=>Object.values(existing.atributos).includes(n))?existing.atributos:{str:8,dex:13,con:12,int:15,wis:10,cha:14};
 for(const [i,code] of ABILITY_CODES.entries()){
