@@ -81,6 +81,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa">Mapa</button><button id="saveBtn">Guardar</button><button id="logoutBtn" class="secondary" title="Terminar sessão Supabase">Sair</button></nav>
 <div id="campaignTitle">Aventura solo</div></header>
 <main>
+<div id="characterValidation" class="access" hidden><span>A ficha desta personagem é anterior à validação SRD 5.2.1. Tens de rever as escolhas de perícias antes de continuar.</span> <a id="validateCharacter" href="/personagens.html">Rever ficha agora</a></div>
 <div id="accessBar" class="access" hidden><span>Para jogar, inicia sessão na tua conta Supabase.</span> <a href="/login.html">Entrar</a></div>
 <div class="bar"><h1 id="sceneTitle">A tua aventura</h1><small id="partyStatus">A preparar o grupo...</small></div>
 <div class="panels">
@@ -227,10 +228,16 @@ let loggedIn=false;
 $('campaignTitle').textContent=game?.campaign||'Aventura solo';
 $('sceneTitle').textContent=game?.campaign||'Aventura';
 $('partyStatus').textContent=[(char?.nome||'Jogador')+' (Nv. '+(char?.nivel||1)+')',...(char?.companheiros||[]).map(c=>c.nome+' (Nv. '+(c.nivel||1)+')')].join(' · ');
+showCharacterValidation();
 const placeName=s=>locationNames[(game?.campaignId||'')+'|'+s]||
  (s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
 function setNotice(t){$('notice').textContent=t}
 function showAccess(){ $('accessBar').hidden=loggedIn;if(!loggedIn)setNotice('Inicia sessão para o Mestre de Jogo continuar a aventura.');}
+function showCharacterValidation(){
+ const missing=!!char&&!char.criacaoValidada;
+ $('characterValidation').hidden=!missing;
+ $('validateCharacter').href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||'');
+}
 function saveGame(announce=false){
  game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.travelHistory=travelHistory.slice(-120);game.locationVisits=locationVisits;game.updated=Date.now();
  localStorage.setItem(saveKey,JSON.stringify(game));
@@ -267,7 +274,7 @@ function render(){
  }
  root.scrollTop=root.scrollHeight;
  renderChoices();
- $('send').disabled=busy||!loggedIn||!messages.some(m=>m.role==='assistant');
+ $('send').disabled=busy||!loggedIn||!char?.criacaoValidada||!messages.some(m=>m.role==='assistant');
  $('actionImage').disabled=busy||artBusy||!loggedIn||!scene||!messages.some(m=>m.role==='assistant');
  $('locationTitle').textContent='Local: '+placeName(scene);
 }
@@ -305,7 +312,7 @@ function renderChoices(){
   const btn=document.createElement('button');btn.type='button';btn.className='choice';
   const num=document.createElement('span');num.className='choice-number';num.textContent=String(index+1);
   const label=document.createElement('span');label.textContent=option;btn.append(num,label);
-  btn.disabled=busy||!loggedIn;
+  btn.disabled=busy||!loggedIn||!char?.criacaoValidada;
   btn.onclick=()=>{if(busy||!loggedIn)return;const text=option.trim();if(!text)return;
     $('action').value='';void runTurn(text);
   };
@@ -450,6 +457,7 @@ function previousAdventures(){
 }
 async function runTurn(action,{initial=false}={}){
  if(busy)return;
+ if(!char?.criacaoValidada){showCharacterValidation();setNotice('Revê e valida a ficha antes de prosseguir a aventura.');return}
  busy=true;$('send').disabled=true;
  const previous=messages.slice();
  messages.push({role:'user',content:action,internal:initial});
@@ -550,7 +558,7 @@ function showSheet(){
   char.periciasProficientes=Array.isArray(char.periciasProficientes)?char.periciasProficientes:[];
   char.periciasEspecialistas=Array.isArray(char.periciasEspecialistas)?char.periciasEspecialistas:[];
   const editLink=make('a','Rever escolhas e validar ficha (SRD 5.2.1)');
-  editLink.href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id);
+  editLink.href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||'');
   editLink.className='button secondary';
   editLink.style.cssText='display:inline-block;margin:8px 0 14px;padding:10px 12px;border:1px solid #bd9454;border-radius:8px;color:#f0d5a4;text-decoration:none';
   root.append(editLink);
@@ -620,7 +628,7 @@ for(const btn of document.querySelectorAll('[data-view]')){
 }
 async function init(){
  const token=await requireLogin();if(!token)return;
- loggedIn=true;if(mislabelledOpening||mislabelledReturn||recoveredSavedScene)saveGame();render();showAccess();
+ loggedIn=true;if(mislabelledOpening||mislabelledReturn||recoveredSavedScene)saveGame();render();showAccess();showCharacterValidation();
  if(!messages.some(x=>x.role==='assistant')){
    if(loggedIn)void begin();
  }else if(scene){await loadSceneImage()}
