@@ -15,7 +15,12 @@ button.secondary{background:transparent;color:#e6c18b}section{margin:22px 0}.sav
 <section class="panel"><h2>As minhas personagens</h2><div id="characters" class="muted"></div><a class="button" href="/personagens.html">Gerir personagens</a></section><section class="panel"><h2>Continuar a jogar</h2><div id="saves" class="muted">A consultar as aventuras guardadas neste navegador…</div></section>
 <section class="panel"><h2>O que queremos jogar?</h2><p class="muted">Escolhe entre aventuras originais de exploração, mistério e fantasia heroica, com regras inspiradas no SRD 5.2.1.</p><a class="button" href="/personagens.html">Escolher personagem e campanha</a></section>
 <footer>Baseado em material de System Reference Document 5.2.1, © Wizards of the Coast LLC, disponibilizado sob CC BY 4.0. Esta é uma implementação independente e em desenvolvimento.</footer></main>
-<script>
+<script type="module">
+import {requireLogin} from '/auth-client.mjs';
+import {restorePlayerState} from '/cloud-sync.mjs';
+if(await requireLogin()){
+ try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}
+}
 const list=document.getElementById('saves');list.replaceChildren();
 const charList=document.getElementById('characters');const profileIds=JSON.parse(localStorage.getItem('cv-character-index')||'[]');charList.textContent=profileIds.length?profileIds.map(id=>{const x=JSON.parse(localStorage.getItem('cv-character-'+id)||'null');return x?x.nome+' · Nível '+(x.nivel||1):''}).filter(Boolean).join(' · '):'Ainda não existem personagens permanentes nesta versão.';
 const ids=JSON.parse(localStorage.getItem('cv-save-index')||'[]');
