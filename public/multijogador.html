@@ -47,7 +47,7 @@ button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:10px;flex-wrap:wrap
 <p class="muted">Esta é a ficha básica da versão de testes; atributos completos e progressão SRD ficam para a próxima iteração.</p>
 <button id="profileSave">Guardar personagem</button>
 <hr style="border:0;border-top:1px solid #48566b;margin:22px 0">
-<h2>2. Escolher campanha e sala</h2><label>Código de acesso do jogo (GAME_ACCESS_CODE)<input id="gameCode" type="password" placeholder="O mesmo código do jogo individual"></label><button class="secondary" id="codeSave">Confirmar código</button><p class="muted">Cria uma sala e envia o código de convite à tua filha, ou entra numa sala que já exista.</p>
+<h2>2. Escolher campanha e sala</h2><p class="muted">A tua sessão Supabase permite jogar sem código adicional. Cria uma sala e partilha apenas o convite com a tua filha.</p>
 <label>Campanha<select id="campaignChoice">
 <option value="veu">O Limiar do Véu — ruínas e mistério</option>
 <option value="farol">O Farol de Cinzabruma — intriga costeira</option>
@@ -95,8 +95,7 @@ const campaignIntros={veu:'Aventura original nas ruínas de Blackwood e o Véu a
 let pollHandle=null,artBusy=false,lastSceneUrl='',lastSceneMessage='';
 let profiles=[],selectedProfile=null;
 const status=m=>$('status').textContent=m;
-$('gameCode').value=sessionStorage.getItem('dnd-game-code')||'';
-$('codeSave').onclick=()=>{sessionStorage.setItem('dnd-game-code',$('gameCode').value.trim());status('Código guardado para esta sessão.');};
+
 function show(id,yes){$(id).hidden=!yes}
 function err(e){status('Erro: '+(e?.message||String(e)))}
 async function query(p){if(p.error)throw p.error;return p.data}
@@ -278,11 +277,10 @@ async function refreshSceneArt(){
  const id=room.id;artBusy=true;
  try{
   const token=(await sb.auth.getSession()).data.session?.access_token;
-  const code=sessionStorage.getItem('dnd-game-code')||'';
-  if(!token||!code){$('roomArtNote').textContent='Confirma o código de acesso na área das salas para carregar a imagem.';return}
+  if(!token){$('roomArtNote').textContent='Inicia sessão para carregar a imagem.';return}
   const res=await fetch('/.netlify/functions/room-art',{
     method:'POST',
-    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'x-game-code':code},
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
     body:JSON.stringify({room_id:id})
   });
   const data=await res.json();
@@ -303,10 +301,9 @@ async function resolveTurn(automatic=false){
  try{
   const token=(await sb.auth.getSession()).data.session?.access_token;
   if(!token)throw Error('Sessão expirada. Volta a entrar.');
-  const code=sessionStorage.getItem('dnd-game-code')||'';
-  if(!code)throw Error('Introduz e confirma o código de acesso do jogo na área das salas.');
+
   const r=await fetch('/.netlify/functions/room-turn',{
-    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'x-game-code':code},
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
     body:JSON.stringify({room_id:roomId})
   });
   const result=await r.json();if(!r.ok)throw Error(result.error||'Falha na narração.');
