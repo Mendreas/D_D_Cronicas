@@ -58,7 +58,11 @@ export default async function(request){
   }
   const existing=await find();
   if(existing)return reply({status:'ready',url:publicUrl(existing),cached:true,kind,location});
-  if(data.mode==='lookup')return reply({status:'missing',kind,location});
+  if(data.mode==='lookup'){
+    const locks=await api('/rest/v1/game_scene_generation_locks?cache_key=eq.'+
+      encodeURIComponent(cacheKey)+'&status=eq.generating&select=updated_at&limit=1');
+    return reply({status:locks?.length?'pending':'missing',kind,location});
+  }
   if(data.mode!=='generate')return reply({error:'Operação inválida'},400);
   if(!process.env.OPENAI_API_KEY)return reply({error:'Falta OPENAI_API_KEY no Netlify'},503);
   const claimed=await api('/rest/v1/rpc/claim_scene_generation',{
