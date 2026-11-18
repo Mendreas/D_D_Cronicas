@@ -60,3 +60,14 @@ export function rollDice(count=1,sides=20,bonus=0){
  const rolls=Array.from({length:n},()=>rollDie(Number(sides)));
  return {dice:`${n}d${sides}`,rolls,bonus:Math.max(-99,Math.min(99,Math.trunc(Number(bonus)||0))),total:rolls.reduce((a,b)=>a+b,0)+Math.max(-99,Math.min(99,Math.trunc(Number(bonus)||0)))};
 }
+
+export function initialSavingThrows(className){
+ const list={
+  Barbarian:['str','con'],Bard:['dex','cha'],Cleric:['wis','cha'],
+  Druid:['int','wis'],Fighter:['str','con'],Monk:['str','dex'],
+  Paladin:['wis','cha'],Ranger:['str','dex'],Rogue:['dex','int'],
+  Sorcerer:['con','cha'],Warlock:['wis','cha'],Wizard:['int','wis'],
+  Mago:['int','wis'],Guerreiro:['str','con'],Clériga:['wis','cha'],Ladina:['dex','int']
+ };
+ return [...(list[String(className)||'']||[])];
+}
