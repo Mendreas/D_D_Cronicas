@@ -202,6 +202,12 @@ if(game?.character&&sharedProfile){
     ||Number(sharedProfile.nivel||1)>Number(localHero.nivel||1);
  if(newerGlobal)
   game.character={...localHero,...sharedProfile,companheiros:localHero.companheiros||[]};
+ // A revisão formal da criação prevalece sobre perícias/atributos copiados
+ // de um save antigo, mesmo que nível e experiência não tenham mudado.
+ if(sharedProfile.criacaoValidada&&Number(sharedProfile.creationRevision||0)>Number(localHero.creationRevision||0)){
+  const keys=['raca','classe','antecedente','atributos','atributosBase','modoBonus','bonusPrincipal','bonusSecundario','periciasClasse','periciaEspecie','periciasProficientes','salvaguardasProficientes','talentoOrigem','profFerramenta','criacaoValidada','creationRevision'];
+  for(const key of keys)game.character[key]=sharedProfile[key];
+ }
  // O inventário e os marcos já alcançados pertencem à personagem, não ao save.
  game.character.equipamento=sharedProfile.equipamento??game.character.equipamento;
  game.character.conquistas=[...new Set([...(localHero.conquistas||[]),...(sharedProfile.conquistas||[])])];
@@ -543,24 +549,28 @@ function showSheet(){
   char.salvaguardasProficientes=Array.isArray(char.salvaguardasProficientes)?char.salvaguardasProficientes:initialSavingThrows(char.classe);
   char.periciasProficientes=Array.isArray(char.periciasProficientes)?char.periciasProficientes:[];
   char.periciasEspecialistas=Array.isArray(char.periciasEspecialistas)?char.periciasEspecialistas:[];
+  const editLink=make('a','Rever escolhas e validar ficha (SRD 5.2.1)');
+  editLink.href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id);
+  editLink.className='button secondary';
+  editLink.style.cssText='display:inline-block;margin:8px 0 14px;padding:10px 12px;border:1px solid #bd9454;border-radius:8px;color:#f0d5a4;text-decoration:none';
+  root.append(editLink);
+  if(!char.criacaoValidada)root.append(make('p','Ficha anterior à validação SRD: algumas proficiências podem ter sido atribuídas livremente. Revê a ficha para corrigir as escolhas sem perder a progressão.','helper'));
   const saves=make('div',undefined,'sheet-skill-grid');
   for(const [code,name] of Object.entries(attrs)){
    const label=make('label',undefined,'sheet-check'),check=make('input');
-   check.type='checkbox';check.checked=char.salvaguardasProficientes.includes(code);
+   check.type='checkbox';check.checked=char.salvaguardasProficientes.includes(code);check.disabled=true;
    const num=make('strong',signed(savingThrowBonus(char,code)));
-   check.onchange=()=>{char.salvaguardasProficientes=check.checked?[...new Set([...char.salvaguardasProficientes,code])]:char.salvaguardasProficientes.filter(x=>x!==code);num.textContent=signed(savingThrowBonus(char,code));saveGame()};
    label.append(check,make('span',name),num);saves.append(label);
   }
-  root.append(make('h3','Salvaguardas'),make('p','Marca proficiência apenas nas salvaguardas concedidas pela classe ou por uma capacidade.','helper'),saves);
+  root.append(make('h3','Salvaguardas'),make('p','Proficiências determinadas pela classe e capacidades. Para alterar a criação, utiliza «Rever escolhas».','helper'),saves);
   const skills=make('div',undefined,'sheet-skill-grid');
   for(const [name,code] of SKILLS_2024){
    const label=make('label',undefined,'sheet-check'),check=make('input'),bonus=make('strong');
-   check.type='checkbox';check.checked=char.periciasProficientes.includes(name);
+   check.type='checkbox';check.checked=char.periciasProficientes.includes(name);check.disabled=true;
    bonus.textContent=signed(skillBonus(char,name));
-   check.onchange=()=>{char.periciasProficientes=check.checked?[...new Set([...char.periciasProficientes,name])]:char.periciasProficientes.filter(x=>x!==name);bonus.textContent=signed(skillBonus(char,name));saveGame()};
    label.append(check,make('span',name+' ('+code.toUpperCase()+')'),bonus);skills.append(label);
   }
-  root.append(make('h3','18 perícias'),make('p','Assinala as perícias proficientes da ficha. A especialização existente é respeitada nos cálculos.','helper'),skills);
+  root.append(make('h3','18 perícias'),make('p','Só leitura. As escolhas são limitadas pela classe, antecedente e espécie na criação da personagem.','helper'),skills);
   if(spell){
    const magic=make('div',undefined,'sheet-summary');
    const mod=modifier(char.atributos?.[spell]??10);
