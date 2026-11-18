@@ -12,8 +12,9 @@ button:disabled{opacity:.45}progress{width:100%;height:17px}#log{max-height:340p
 <section class="panel"><h2>1. Preparar o catálogo</h2><p>Executa primeiro <code>supabase/variantes_locais.sql</code> no SQL Editor. Este passo permite duas variantes por local sem apagar imagens antigas.</p>
 <h2>2. Selecionar o ZIP</h2>
 <label for="zipFile">Pacote de imagens com manifest.json</label><p><input id="zipFile" type="file" accept=".zip,application/zip"></p>
+<p><label><input type="checkbox" id="replaceExisting"> Substituir imagens existentes (mantém nomes e variantes)</label></p>
 <button id="importBtn" disabled>Importar para o Supabase</button>
-<p class="warn">Os ficheiros existentes não serão substituídos. Não é feita qualquer chamada à OpenAI durante a importação. As imagens do pacote são uma primeira coleção de pré-visualizações; podem ser substituídas posteriormente com uma ferramenta de gestão.</p>
+<p class="warn">Por omissão, os ficheiros existentes são preservados. Para substituir as imagens antigas, ativa a opção acima. Não é feita qualquer chamada à OpenAI durante a importação. As imagens do pacote são uma primeira coleção de pré-visualizações; podem ser substituídas posteriormente com uma ferramenta de gestão.</p>
 <p id="progressText" role="status">A confirmar sessão Supabase…</p><progress id="progress" max="48" value="0"></progress><pre id="log"></pre>
 </section></main><script type="module">
 import JSZip from 'https://esm.sh/jszip@3.10.1';
@@ -33,7 +34,7 @@ async function api(payload){
 $('zipFile').addEventListener('change',()=>{$('importBtn').disabled=working||!loggedIn||!$('zipFile').files.length});
 $('importBtn').onclick=async()=>{
  if(working)return;working=true;$('importBtn').disabled=true;$('log').textContent='';
- let successes=0,existing=0,failed=0;
+ let successes=0,existing=0,replaced=0,failed=0;
  try{
   const file=$('zipFile').files[0];
   if(!file||file.size>60*1024*1024)throw Error('Seleciona um ZIP válido com menos de 60 MB.');
@@ -57,17 +58,18 @@ $('importBtn').onclick=async()=>{
    try{
     const basic={kind:'location_base',campaign_id:x.campaign_id,location_id:x.location_id,variant:x.variant};
     const check=await api({...basic,mode:'lookup'});
-    if(check.status==='ready'){existing++;log('Já existe: '+key);continue}
+    if(check.status==='ready'&&!$('replaceExisting').checked){existing++;log('Já existe: '+key);continue}
     const data=await entry.async('base64');
-    const result=await api({...basic,mode:'import',image_data:'data:image/jpeg;base64,'+data});
+    const result=await api({...basic,mode:check.status==='ready'?'replace':'import',image_data:'data:image/jpeg;base64,'+data});
     if(result.status==='ready'){
-     if(result.cached)existing++;else successes++;
-     log('OK: '+key);
+     if(result.replaced){replaced++;log('SUBSTITUÍDA: '+key)}
+     else if(result.cached){existing++;log('Já existente: '+key)}
+     else{successes++;log('NOVA: '+key)}
     }else{failed++;log('Aguarda: '+key+' — '+result.status)}
    }catch(e){failed++;log('ERRO '+key+': '+e.message)}
    finally{$('progress').value=i+1}
   }
-  $('progressText').textContent='Concluído: '+successes+' importadas, '+existing+' já existentes, '+failed+' com erro.';
+  $('progressText').textContent='Concluído: '+successes+' novas, '+replaced+' substituídas, '+existing+' preservadas, '+failed+' com erro.';
  }catch(e){$('progressText').textContent='Erro na importação: '+e.message;log(e.message)}
  finally{working=false;$('importBtn').disabled=!loggedIn||!$('zipFile').files.length}
 };
