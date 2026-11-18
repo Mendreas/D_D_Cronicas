@@ -81,12 +81,34 @@ const oldSceneAtLoad=scene;
 const locationAliases={"veu|aldeia-blackwood":"aldeia-blackwood","veu|vila-blackwood":"aldeia-blackwood","veu|blackwood-aldeia":"aldeia-blackwood","veu|aldeia-proxima":"aldeia-blackwood","veu|mercado-blackwood":"aldeia-blackwood","veu|trilha-sombria":"trilha-sombria","veu|floresta-blackwood":"trilha-sombria","veu|trilha-sombreada-floresta":"trilha-sombria","veu|caminho-blackwood":"trilha-sombria","veu|trilho-floresta":"trilha-sombria","veu|circulo-pedras":"circulo-pedras","veu|circulo-ritual-floresta":"circulo-pedras","veu|clareira-dos-menires":"circulo-pedras","veu|clareira-sagrada":"circulo-pedras","veu|blackwood-ruinas":"blackwood-ruinas","veu|ruinas-torre-blackwood":"blackwood-ruinas","veu|blackwood-ruinas-torre-exterior":"blackwood-ruinas","veu|ruinas-blackwood":"blackwood-ruinas","veu|torre-blackwood":"blackwood-ruinas","veu|torre-abandonada":"blackwood-ruinas","veu|sala-ruinas":"sala-ruinas","veu|interior-torre":"sala-ruinas","veu|sala-da-torre":"sala-ruinas","veu|ruinas-sala":"sala-ruinas","veu|corredor-estreito-ruinas":"sala-ruinas","veu|escadaria-torre":"escadaria-torre","veu|escadas-torre":"escadaria-torre","veu|escadaria-espiral":"escadaria-torre","veu|escadaria-antiga":"escadaria-torre","veu|cripta-subterranea":"cripta-subterranea","veu|cripta-blackwood":"cripta-subterranea","veu|cripta-antiga":"cripta-subterranea","veu|camara-funeraria":"cripta-subterranea","veu|camara-ritual":"camara-ritual","veu|camara-do-artefacto":"camara-ritual","veu|sala-do-artefacto":"camara-ritual","veu|sala-ritual":"camara-ritual","veu|camara-magica":"camara-ritual","farol|porto-cinzabruma":"porto-cinzabruma","farol|porto-nebuloso":"porto-cinzabruma","farol|porto-tempestade":"porto-cinzabruma","farol|cais-cinzabruma":"porto-cinzabruma","farol|porto":"porto-cinzabruma","farol|vila-cinzabruma":"vila-cinzabruma","farol|aldeia-cinzabruma":"vila-cinzabruma","farol|vila-costeira":"vila-cinzabruma","farol|mercado-cinzabruma":"vila-cinzabruma","farol|falesia-tempestuosa":"falesia-tempestuosa","farol|falesias-abaixo-do-farol":"falesia-tempestuosa","farol|falesias-do-norte":"falesia-tempestuosa","farol|falesia":"falesia-tempestuosa","farol|falesias":"falesia-tempestuosa","farol|exterior-farol":"exterior-farol","farol|farol-exterior-tempestade":"exterior-farol","farol|farol-exterior":"exterior-farol","farol|farol-cinzabruma":"exterior-farol","farol|base-do-farol":"exterior-farol","farol|interior-farol":"interior-farol","farol|farol-interior":"interior-farol","farol|escadaria-farol":"interior-farol","farol|salas-farol":"interior-farol","farol|tunel-contrabandistas":"tunel-contrabandistas","farol|tunel-contrabando":"tunel-contrabandistas","farol|passagem-secreta-farol":"tunel-contrabandistas","farol|tunel-subterraneo":"tunel-contrabandistas","farol|sala-da-lanterna":"sala-da-lanterna","farol|topo-do-farol":"sala-da-lanterna","farol|lanterna-farol":"sala-da-lanterna","farol|sala-luz":"sala-da-lanterna","farol|cume-farol":"sala-da-lanterna","farol|gruta-oculta":"gruta-oculta","farol|gruta-marinha":"gruta-oculta","farol|gruta-da-tempestade":"gruta-oculta","farol|caverna-tempestade":"gruta-oculta","farol|gruta-secreta":"gruta-oculta","estrelas|observatorio-exterior":"observatorio-exterior","estrelas|observatorio-serath":"observatorio-exterior","estrelas|observatorio-exterior-noturno":"observatorio-exterior","estrelas|exterior-observatorio":"observatorio-exterior","estrelas|observatorio":"observatorio-exterior","estrelas|observatorio-cupula":"observatorio-cupula","estrelas|cupula-principal":"observatorio-cupula","estrelas|observatorio-cupula-principal":"observatorio-cupula","estrelas|cupula-cristal":"observatorio-cupula","estrelas|sala-dos-mapas":"sala-dos-mapas","estrelas|sala-celeste-principal":"sala-dos-mapas","estrelas|cartografia-astral":"sala-dos-mapas","estrelas|sala-mapas":"sala-dos-mapas","estrelas|corredor-celeste":"corredor-celeste","estrelas|passagem-das-ruinas":"corredor-celeste","estrelas|corredor-astral":"corredor-celeste","estrelas|corredor-observatorio":"corredor-celeste","estrelas|camara-astral":"camara-astral","estrelas|cripta-estelar":"camara-astral","estrelas|camara-das-estrelas":"camara-astral","estrelas|santuario-astral":"camara-astral","estrelas|biblioteca-estelar":"biblioteca-estelar","estrelas|biblioteca-astral":"biblioteca-estelar","estrelas|arquivo-astral":"biblioteca-estelar","estrelas|biblioteca-observatorio":"biblioteca-estelar","estrelas|jardim-constelacao":"jardim-constelacao","estrelas|jardim-estelar":"jardim-constelacao","estrelas|terraco-das-constelacoes":"jardim-constelacao","estrelas|jardim-observatorio":"jardim-constelacao","estrelas|portal-estelar":"portal-estelar","estrelas|portal-das-estrelas":"portal-estelar","estrelas|santuario-das-chaves":"portal-estelar","estrelas|portal-astral":"portal-estelar","estrelas|camara-portal":"portal-estelar"};
 function canonicalLocation(x){const value=String(x||'').toLowerCase().replace(/_/g,'-');return locationAliases[(game?.campaignId||'')+'|'+value]||value}
 scene=canonicalLocation(scene);
+// Corrigir gravações antigas cujo prólogo descreve o grupo junto às ruínas
+// mas o identificador gerado tinha sido incorretamente o da aldeia.
+// Só alterar a primeira cena, antes de o jogador efetuar qualquer ação.
+const openingNarrative=messages.filter(m=>m.role==='assistant');
+const mislabelledOpening=game?.campaignId==='veu'&&scene==='aldeia-blackwood'
+ &&openingNarrative.length===1&&!messages.some(m=>m.role==='user'&&!m.internal)
+ &&/ru[ií]nas.{0,100}torre|torre.{0,100}ru[ií]nas/i.test(openingNarrative[0].content||'');
+if(mislabelledOpening)scene='blackwood-ruinas';
+const locationNames={
+ 'veu|aldeia-blackwood':'Aldeia de Blackwood',
+ 'veu|blackwood-ruinas':'Ruínas da Torre de Blackwood',
+ 'veu|trilha-sombria':'Trilha Sombria',
+ 'veu|sala-ruinas':'Interior da Torre',
+ 'veu|escadaria-torre':'Escadaria da Torre',
+ 'farol|porto-cinzabruma':'Porto de Cinzabruma',
+ 'farol|exterior-farol':'Exterior do Farol',
+ 'estrelas|observatorio-exterior':'Observatório de Serath'
+};
 let locationVisits=game?.locationVisits&&typeof game.locationVisits==='object'?game.locationVisits:{};
 if(scene&&!locationVisits[scene])locationVisits[scene]=1;
 let selectedVariant=()=>Number(locationVisits[scene]||1)%2===0?'b':'a';
 let artwork='',busy=false,artBusy=false,firstAttempted=false;
 let detailView=false,detailArtwork='',detailKey='';
 let visited=Array.isArray(game?.visitedLocations)?game.visitedLocations:[];
+if(mislabelledOpening){
+ visited=visited.filter(v=>canonicalLocation(v)!=='aldeia-blackwood');
+ game.currentLocation=scene;
+}
 if(scene&&!visited.includes(scene))visited.push(scene);
 const char=game?.character||null;
 if(!game||!char){location.replace('/personagens.html')}
@@ -94,7 +116,8 @@ let loggedIn=false;
 $('campaignTitle').textContent=game?.campaign||'Aventura solo';
 $('sceneTitle').textContent=game?.campaign||'Aventura';
 $('partyStatus').textContent=[char?.nome||'Jogador',...(char?.companheiros||[]).map(c=>c.nome)].join(' · ');
-const placeName=s=>(s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
+const placeName=s=>locationNames[(game?.campaignId||'')+'|'+s]||
+ (s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
 function setNotice(t){$('notice').textContent=t}
 function showAccess(){ $('accessBar').hidden=loggedIn;if(!loggedIn)setNotice('Inicia sessão para o Mestre de Jogo continuar a aventura.');}
 function saveGame(announce=false){
@@ -131,7 +154,7 @@ function render(){
  renderChoices();
  $('send').disabled=busy||!loggedIn||!messages.some(m=>m.role==='assistant');
  $('actionImage').disabled=busy||artBusy||!loggedIn||!scene||!messages.some(m=>m.role==='assistant');
- $('locationTitle').textContent='Local: '+placeName(scene)+' · Vista '+selectedVariant().toUpperCase();
+ $('locationTitle').textContent='Local: '+placeName(scene);
 }
 function extractLegacyChoices(narrative){
  const lines=String(narrative||'').split(/\r?\n/);
@@ -264,7 +287,7 @@ function updatedLocation(id){
   if(!visited.includes(scene))visited.push(scene);
   void loadSceneImage();
  }else if(!artwork&&!artBusy)void loadSceneImage();
- $('locationTitle').textContent='Local: '+placeName(scene)+' · Vista '+selectedVariant().toUpperCase();
+ $('locationTitle').textContent='Local: '+placeName(scene);
 }
 async function showDetailedImage(){
  if(!scene||artBusy||busy||!loggedIn)return;
@@ -379,7 +402,7 @@ for(const btn of document.querySelectorAll('[data-view]')){
 }
 async function init(){
  const token=await requireLogin();if(!token)return;
- loggedIn=true;render();showAccess();
+ loggedIn=true;if(mislabelledOpening)saveGame();render();showAccess();
  if(!messages.some(x=>x.role==='assistant')){
    if(loggedIn)void begin();
  }else if(scene){await loadSceneImage()}
