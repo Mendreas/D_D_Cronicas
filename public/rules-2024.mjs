@@ -27,3 +27,36 @@ export function damageRoll(diceCount=1,dieSides=6,bonus=0){
  const rolls=Array.from({length:Math.min(30,Math.max(1,Math.trunc(diceCount)))},()=>rollDie(dieSides));
  return {rolls,total:rolls.reduce((a,b)=>a+b,0)+Math.trunc(bonus)};
 }
+
+export const SKILLS_2024=[
+ ['Acrobacia','dex'],['Adestrar Animais','wis'],['Arcanismo','int'],['Atletismo','str'],['Atuação','cha'],
+ ['Enganação','cha'],['Furtividade','dex'],['História','int'],['Intimidação','cha'],['Intuição','wis'],
+ ['Investigação','int'],['Medicina','wis'],['Natureza','int'],['Perceção','wis'],['Persuasão','cha'],
+ ['Prestidigitação','dex'],['Religião','int'],['Sobrevivência','wis']
+];
+const HD={Barbarian:12,Bard:8,Cleric:8,Druid:8,Fighter:10,Monk:8,Paladin:10,Ranger:10,Rogue:8,Sorcerer:6,Warlock:8,Wizard:6,Guerreiro:10,Clériga:8,Ladina:8};
+export function classHitDie(character){return HD[character?.classe]||8}
+export function spellAbility(character){
+ const cls=String(character?.classe||'');
+ if(['Wizard','Mago'].includes(cls))return 'int';
+ if(['Cleric','Clériga','Druid','Druida','Ranger'].includes(cls))return 'wis';
+ if(['Bard','Sorcerer','Warlock','Paladin'].includes(cls))return 'cha';
+ return null;
+}
+export function skillBonus(character,skill){
+ const ability=SKILLS_2024.find(([name])=>name===skill)?.[1]||'int';
+ const prof=Array.isArray(character?.periciasProficientes)&&character.periciasProficientes.includes(skill);
+ const exp=Array.isArray(character?.periciasEspecialistas)&&character.periciasEspecialistas.includes(skill);
+ return modifier(character?.atributos?.[ability]??10)+(exp?2:prof?1:0)*proficiencyBonus(character?.nivel||1);
+}
+export function savingThrowBonus(character,ability){
+ const proficient=Array.isArray(character?.salvaguardasProficientes)&&character.salvaguardasProficientes.includes(ability);
+ return modifier(character?.atributos?.[ability]??10)+(proficient?proficiencyBonus(character?.nivel||1):0);
+}
+export function rollDice(count=1,sides=20,bonus=0){
+ const n=Math.max(1,Math.min(20,Math.trunc(Number(count)||1)));
+ const allowed=[4,6,8,10,12,20,100];
+ if(!allowed.includes(Number(sides)))throw Error('Dado inválido');
+ const rolls=Array.from({length:n},()=>rollDie(Number(sides)));
+ return {dice:`${n}d${sides}`,rolls,bonus:Math.max(-99,Math.min(99,Math.trunc(Number(bonus)||0))),total:rolls.reduce((a,b)=>a+b,0)+Math.max(-99,Math.min(99,Math.trunc(Number(bonus)||0)))};
+}
