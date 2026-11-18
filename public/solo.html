@@ -124,9 +124,13 @@ let sharedProfile=null;
 try{sharedProfile=sharedProfileId?JSON.parse(localStorage.getItem('cv-character-'+sharedProfileId)||'null'):null}catch{}
 if(game?.character&&sharedProfile){
  const localHero=game.character;
- if((Number(sharedProfile.experiencia)||0)>(Number(localHero.experiencia)||0)
-    ||Number(sharedProfile.nivel||1)>Number(localHero.nivel||1))
+ const newerGlobal=(Number(sharedProfile.experiencia)||0)>(Number(localHero.experiencia)||0)
+    ||Number(sharedProfile.nivel||1)>Number(localHero.nivel||1);
+ if(newerGlobal)
   game.character={...localHero,...sharedProfile,companheiros:localHero.companheiros||[]};
+ // O inventário e os marcos já alcançados pertencem à personagem, não ao save.
+ game.character.equipamento=sharedProfile.equipamento??game.character.equipamento;
+ game.character.conquistas=[...new Set([...(localHero.conquistas||[]),...(sharedProfile.conquistas||[])])];
 }
 if(game?.character){
  const savedParty=readParty(sharedProfileId);
