@@ -96,6 +96,48 @@ const lastNarratedScene=[...messages].reverse().find(m=>m.role==='assistant')?.c
 const mislabelledReturn=game?.campaignId==='veu'&&scene==='aldeia-blackwood'
  &&/(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\s+(?:de novo\s+)?(?:[àa]\s+|para\s+|junto\s+[àa]\s+|perto\s+d[aeo]\s+)?(?:entrada\s+d[aeo]\s+)?(?:torre|ru[ií]nas)|(?:[àa]\s+)?entrada\s+d[aeo]\s+torre/i.test(lastNarratedScene);
 if(mislabelledReturn)scene='blackwood-ruinas';
+// Recuperação conservadora de local em campanhas antigas quando o Mestre
+// descreveu explicitamente a chegada a outro cenário.
+const savedTransitions={
+ farol:[
+  ['sala-da-lanterna',/\\b(?:chegas?|entras?|sobes?|atinges?)\\b[^.!?]{0,80}\\b(?:sala da lanterna|topo do farol)/i],
+  ['tunel-contrabandistas',/\\b(?:entras?|desces?|avan[cç]as?|chegas?)\\b[^.!?]{0,80}\\b(?:t[uú]nel|passagem secreta)/i],
+  ['gruta-oculta',/\\b(?:entras?|chegas?|avan[cç]as?)\\b[^.!?]{0,80}\\b(?:gruta|caverna)/i],
+  ['interior-farol',/\\b(?:entras?|avan[cç]as?|sobes?)\\b[^.!?]{0,80}\\b(?:interior do farol|dentro do farol|escadaria do farol)/i],
+  ['exterior-farol',/\\b(?:chegas?|regressas?|aproximas-te)\\b[^.!?]{0,80}\\b(?:entrada do farol|base do farol|exterior do farol)/i],
+  ['falesia-tempestuosa',/\\b(?:chegas?|avan[cç]as?|atravessas?)\\b[^.!?]{0,80}\\b(?:fal[eé]sia|fal[eé]sias)/i],
+  ['vila-cinzabruma',/\\b(?:chegas?|regressas?|entras?)\\b[^.!?]{0,80}\\b(?:vila|aldeia|mercado)/i],
+  ['porto-cinzabruma',/\\b(?:chegas?|regressas?|entras?)\\b[^.!?]{0,80}\\b(?:porto|cais|docas)/i]
+ ],
+ estrelas:[
+  ['portal-estelar',/\\b(?:entras?|atravessas?|chegas?)\\b[^.!?]{0,80}\\b(?:portal|santu[aá]rio das chaves)/i],
+  ['jardim-constelacao',/\\b(?:entras?|chegas?|atravessas?)\\b[^.!?]{0,80}\\b(?:jardim|terra[cç]o das constela[cç][oõ]es)/i],
+  ['biblioteca-estelar',/\\b(?:entras?|chegas?|avan[cç]as?)\\b[^.!?]{0,80}\\b(?:biblioteca|arquivo astral)/i],
+  ['camara-astral',/\\b(?:entras?|chegas?|avan[cç]as?)\\b[^.!?]{0,80}\\b(?:c[aâ]mara astral|c[aâ]mara das estrelas)/i],
+  ['corredor-celeste',/\\b(?:entras?|chegas?|atravessas?)\\b[^.!?]{0,80}\\b(?:corredor|passagem das ru[ií]nas)/i],
+  ['sala-dos-mapas',/\\b(?:entras?|chegas?|avan[cç]as?)\\b[^.!?]{0,80}\\b(?:sala dos mapas|cartografia astral)/i],
+  ['observatorio-cupula',/\\b(?:entras?|chegas?|sobes?)\\b[^.!?]{0,80}\\b(?:c[uú]pula|telesc[oó]pio principal)/i],
+  ['observatorio-exterior',/\\b(?:chegas?|regressas?|aproximas-te)\\b[^.!?]{0,80}\\b(?:entrada do observat[oó]rio|exterior do observat[oó]rio|planalto)/i]
+ ],
+ veu:[
+  ['cripta-subterranea',/\\b(?:entras?|desces?|chegas?|avan[cç]as?)\\b[^.!?]{0,80}\\b(?:cripta|c[aâ]mara funer[aá]ria)/i],
+  ['camara-ritual',/\\b(?:entras?|chegas?|avan[cç]as?)\\b[^.!?]{0,80}\\b(?:c[aâ]mara do artefacto|c[aâ]mara ritual)/i],
+  ['escadaria-torre',/\\b(?:desces?|sobes?|entras?|chegas?)\\b[^.!?]{0,80}\\b(?:escadaria|escadas|degraus)/i],
+  ['sala-ruinas',/\\b(?:entras?|penetr[aá]s?|chegas?)\\b[^.!?]{0,80}\\b(?:interior da torre|sala da torre)/i],
+  ['blackwood-ruinas',/\\b(?:chegas?|regressas?|voltas?|aproximas-te)\\b[^.!?]{0,80}\\b(?:ru[ií]nas|torre)/i],
+  ['aldeia-blackwood',/\\b(?:chegas?|regressas?|voltas?|entras?)\\b[^.!?]{0,80}\\b(?:aldeia|vila|mercado)/i],
+  ['circulo-pedras',/\\b(?:chegas?|entras?|avan[cç]as?)\\b[^.!?]{0,80}\\b(?:c[ií]rculo de pedras|menires)/i],
+  ['trilha-sombria',/\\b(?:entras?|avan[cç]as?|segues?|chegas?)\\b[^.!?]{0,80}\\b(?:floresta|trilho|trilha)/i]
+ ]
+};
+const recoveredScene=lastNarratedScene.split(/(?<=[.!?])\\s+|\\n+/).reduce((latest,sentence)=>{
+ for(const [id,pattern] of(savedTransitions[game?.campaignId]||[])){
+  if(pattern.test(sentence))return id;
+ }
+ return latest;
+},'');
+const recoveredSavedScene=!!recoveredScene&&recoveredScene!==scene;
+if(recoveredSavedScene)scene=recoveredScene;
 const locationNames={
  'veu|aldeia-blackwood':'Aldeia de Blackwood',
  'veu|blackwood-ruinas':'Ruínas da Torre de Blackwood',
@@ -116,7 +158,7 @@ if(mislabelledOpening){
  visited=visited.filter(v=>canonicalLocation(v)!=='aldeia-blackwood');
  game.currentLocation=scene;
 }
-if(mislabelledReturn)game.currentLocation=scene;
+if(mislabelledReturn||recoveredSavedScene)game.currentLocation=scene;
 if(scene&&!visited.includes(scene))visited.push(scene);
 // A ficha e os aliados partilham a progressão mesmo em saves antigos.
 const sharedProfileId=game?.characterId||game?.character?.id||'';
@@ -470,7 +512,7 @@ for(const btn of document.querySelectorAll('[data-view]')){
 }
 async function init(){
  const token=await requireLogin();if(!token)return;
- loggedIn=true;if(mislabelledOpening||mislabelledReturn)saveGame();render();showAccess();
+ loggedIn=true;if(mislabelledOpening||mislabelledReturn||recoveredSavedScene)saveGame();render();showAccess();
  if(!messages.some(x=>x.role==='assistant')){
    if(loggedIn)void begin();
  }else if(scene){await loadSceneImage()}
