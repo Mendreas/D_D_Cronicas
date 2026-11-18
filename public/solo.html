@@ -197,6 +197,14 @@ if(scene&&travelHistory.at(-1)!==scene)travelHistory.push(scene);
 const sharedProfileId=game?.characterId||game?.character?.id||'';
 let sharedProfile=null;
 try{sharedProfile=sharedProfileId?JSON.parse(localStorage.getItem('cv-character-'+sharedProfileId)||'null'):null}catch{}
+if(game?.character&&sharedProfileId&&!sharedProfile){
+ // Recuperar o perfil de saves antigos que ainda não possuíam ficha permanente.
+ const recovered={...game.character,id:sharedProfileId};
+ localStorage.setItem('cv-character-'+sharedProfileId,JSON.stringify(recovered));
+ let index=[];try{index=JSON.parse(localStorage.getItem('cv-character-index')||'[]')}catch{}
+ if(!index.includes(sharedProfileId)){index.unshift(sharedProfileId);localStorage.setItem('cv-character-index',JSON.stringify(index))}
+ sharedProfile=recovered;
+}
 if(game?.character&&sharedProfile){
  const localHero=game.character;
  const newerGlobal=(Number(sharedProfile.experiencia)||0)>(Number(localHero.experiencia)||0)
