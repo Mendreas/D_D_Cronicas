@@ -4,6 +4,9 @@
 <div id="chosen" class="chosen"></div><div class="grid" id="campaigns"></div><p><small>As campanhas oficiais comerciais não são reproduzidas sem autorização. Conteúdos SRD licenciados terão atribuição própria.</small></p></main>
 <script type="module">
 import {mergeParty,readParty,saveParty} from '/progression.mjs';
+import {requireLogin} from '/auth-client.mjs';
+import {restorePlayerState,syncPlayerState} from '/cloud-sync.mjs';
+if(await requireLogin()){try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}}
 const selectedId=new URLSearchParams(location.search).get('personagem')||localStorage.getItem('cv-active-character');
 const character=selectedId?JSON.parse(localStorage.getItem('cv-character-'+selectedId)||'null'):null;
 if(!character){location.replace('/personagens.html')}
@@ -35,6 +38,7 @@ const root=document.getElementById('campaigns');for(const c of campaigns){const 
  localStorage.setItem('cv-save-'+saveId,JSON.stringify(save));
  const saves=JSON.parse(localStorage.getItem('cv-save-index')||'[]');saves.unshift(saveId);
  localStorage.setItem('cv-save-index',JSON.stringify(saves));
+ try{await syncPlayerState()}catch(e){console.warn('Campanha guardada neste dispositivo:',e.message)}
  location.href='/solo.html?save='+encodeURIComponent(saveId);
 };div.append(ic,h,lv,p,b);root.append(div)}
 </script></body></html>
