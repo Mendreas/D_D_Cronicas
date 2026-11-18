@@ -52,10 +52,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa-local">Mapa local</button><button class="secondary" data-view="mapa-geral">Mapa geral</button><button id="saveBtn">Guardar</button></nav>
 <div id="campaignTitle">Aventura solo</div></header>
 <main>
-<div id="accessBar" class="access" hidden>
-<label for="access">Código de acesso ao jogo:</label><input type="password" id="access" autocomplete="off" placeholder="Código privado configurado no Netlify">
-<button id="accessSave">Entrar na aventura</button>
-</div>
+<div id="accessBar" class="access" hidden><span>Para jogar, inicia sessão na tua conta Supabase.</span> <a href="/login.html">Entrar</a></div>
 <div class="bar"><h1 id="sceneTitle">A tua aventura</h1><small id="partyStatus">A preparar o grupo...</small></div>
 <div class="panels">
 <section class="panel" aria-label="Narrativa do Mestre de Jogo"><div class="panel-head">O Mestre de Jogo <span id="chapterIndicator" style="font:12px system-ui;color:#bdcad9">Capítulo I</span></div>
@@ -73,6 +70,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <div id="modalBackdrop" class="modal-backdrop" hidden role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button class="secondary" id="modalClose">Fechar ✕</button></div><div id="modalBody"></div></div></div>
 <script type="module">
 import {abilityCheck,proficiencyBonus,modifier} from '/rules-2024.mjs';
+import {gameToken,requireLogin} from '/auth-client.mjs';
 const $=id=>document.getElementById(id);
 const saveId=new URLSearchParams(location.search).get('save');
 const saveKey=saveId?'cv-save-'+saveId:null;
@@ -85,14 +83,13 @@ let visited=Array.isArray(game?.visitedLocations)?game.visitedLocations:[];
 if(scene&&!visited.includes(scene))visited.push(scene);
 const char=game?.character||null;
 if(!game||!char){location.replace('/personagens.html')}
-const code=()=>sessionStorage.getItem('dnd-game-code')||'';
-$('access').value=code();
+let loggedIn=false;
 $('campaignTitle').textContent=game?.campaign||'Aventura solo';
 $('sceneTitle').textContent=game?.campaign||'Aventura';
 $('partyStatus').textContent=[char?.nome||'Jogador',...(char?.companheiros||[]).map(c=>c.nome)].join(' · ');
 const placeName=s=>(s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
 function setNotice(t){$('notice').textContent=t}
-function showAccess(){ $('accessBar').hidden=!!code();if(!code())setNotice('Introduz o teu código de acesso para o Mestre iniciar automaticamente a aventura.')}
+function showAccess(){ $('accessBar').hidden=loggedIn;if(!loggedIn)setNotice('Inicia sessão para o Mestre de Jogo continuar a aventura.');}
 function saveGame(announce=false){
  game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.updated=Date.now();
  localStorage.setItem(saveKey,JSON.stringify(game));
@@ -125,8 +122,8 @@ function render(){
  }
  root.scrollTop=root.scrollHeight;
  renderChoices();
- $('send').disabled=busy||!code()||!messages.some(m=>m.role==='assistant');
- $('actionImage').disabled=busy||artBusy||!code()||!scene||!messages.some(m=>m.role==='assistant');
+ $('send').disabled=busy||!loggedIn||!messages.some(m=>m.role==='assistant');
+ $('actionImage').disabled=busy||artBusy||!loggedIn||!scene||!messages.some(m=>m.role==='assistant');
  $('locationTitle').textContent='Local: '+placeName(scene);
 }
 function extractLegacyChoices(narrative){
@@ -153,8 +150,8 @@ function renderChoices(){
   const btn=document.createElement('button');btn.type='button';btn.className='choice';
   const num=document.createElement('span');num.className='choice-number';num.textContent=String(index+1);
   const label=document.createElement('span');label.textContent=option;btn.append(num,label);
-  btn.disabled=busy||!code();
-  btn.onclick=()=>{if(busy||!code())return;const text=option.trim();if(!text)return;
+  btn.disabled=busy||!loggedIn;
+  btn.onclick=()=>{if(busy||!loggedIn)return;const text=option.trim();if(!text)return;
     $('action').value='';void runTurn(text);
   };
   wrap.append(btn);
@@ -166,9 +163,10 @@ function displayImage(src){
  const img=document.createElement('img');img.src=src;img.alt='Ilustração do local '+placeName(scene);box.append(img);
 }
 async function request(path,data){
- if(!code())throw Error('Falta o código de acesso.');
+ const token=await gameToken();
+ if(!token)throw Error('Sessão Supabase expirada. Entra novamente.');
  let r;
- try{r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','x-game-code':code()},body:JSON.stringify(data)})}
+ try{r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(data)})}
  catch(e){throw Error('Não foi possível comunicar com o Netlify: '+e.message)}
  const v=await r.json().catch(()=>{throw Error('Resposta inválida do servidor.')});
  if(!r.ok)throw Error(v.error||'Erro de comunicação '+r.status);
@@ -246,7 +244,7 @@ function updatedLocation(id){
  $('locationTitle').textContent='Local: '+placeName(scene);
 }
 async function showDetailedImage(){
- if(!scene||artBusy||busy||!code())return;
+ if(!scene||artBusy||busy||!loggedIn)return;
  artBusy=true;render();
  try{
   const lastNarration=[...messages].reverse().find(m=>m.role==='assistant')?.content||'';
@@ -283,7 +281,7 @@ async function runTurn(action,{initial=false}={}){
  finally{busy=false;render()}
 }
 async function begin(){
- if(!code()){showAccess();return}
+ if(!loggedIn){showAccess();return}
  if(messages.some(m=>m.role==='assistant')||busy)return;
  if(firstAttempted)return;
  firstAttempted=true;$('retryStart').hidden=true;
@@ -292,11 +290,6 @@ async function begin(){
 }
 $('send').onclick=()=>{const action=$('action').value.trim();if(!action||busy)return;$('action').value='';void runTurn(action)};
 $('action').addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();$('send').click()}});
-$('accessSave').onclick=()=>{
- const value=$('access').value.trim();
- if(!value){setNotice('Escreve o código de acesso.');return}
- sessionStorage.setItem('dnd-game-code',value);showAccess();render();void begin();
-};
 $('saveBtn').onclick=()=>saveGame(true);
 $('retryImage').onclick=()=>{if(scene)void illustrate(scene,true)};
 $('retryStart').onclick=()=>{firstAttempted=false;$('retryStart').hidden=true;void begin()};
@@ -361,9 +354,10 @@ for(const btn of document.querySelectorAll('[data-view]')){
  }
 }
 async function init(){
- render();showAccess();
+ const token=await requireLogin();if(!token)return;
+ loggedIn=true;render();showAccess();
  if(!messages.some(x=>x.role==='assistant')){
-   if(code())void begin();
+   if(loggedIn)void begin();
  }else if(scene){await loadSceneImage()}
 }
 void init();
