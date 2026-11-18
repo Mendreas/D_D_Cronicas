@@ -11,7 +11,7 @@ button:disabled{opacity:.45}progress{width:100%;height:17px}#log{max-height:340p
 <p>Ferramenta de importação para o Supabase. Lê o ZIP de imagens no teu computador, envia cada ficheiro para o bucket <strong>scene-images</strong> e associa-o ao local correto.</p>
 <section class="panel"><h2>1. Preparar o catálogo</h2><p>Executa primeiro <code>supabase/variantes_locais.sql</code> no SQL Editor. Este passo permite duas variantes por local sem apagar imagens antigas.</p>
 <h2>2. Selecionar o ZIP</h2>
-<label for="zipFile">Pacote de imagens com manifest.json</label><p><input id="zipFile" type="file" accept=".zip,application/zip"></p>
+<label for="zipFile">Pacote completo ou parcial com manifest.json</label><p><input id="zipFile" type="file" accept=".zip,application/zip"></p>
 <p><label><input type="checkbox" id="replaceExisting"> Substituir imagens existentes (mantém nomes e variantes)</label></p>
 <button id="importBtn" disabled>Importar para o Supabase</button>
 <p class="warn">Por omissão, os ficheiros existentes são preservados. Para substituir as imagens antigas, ativa a opção acima. Não é feita qualquer chamada à OpenAI durante a importação. As imagens do pacote são uma primeira coleção de pré-visualizações; podem ser substituídas posteriormente com uma ferramenta de gestão.</p>
@@ -43,7 +43,7 @@ $('importBtn').onclick=async()=>{
   if(!manifestFile)throw Error('O ZIP não tem manifest.json na raiz.');
   const manifest=JSON.parse(await manifestFile.async('string'));
   const items=manifest.images;
-  if(!Array.isArray(items)||items.length!==48)throw Error('O manifesto não contém as 48 imagens esperadas.');
+  if(!Array.isArray(items)||items.length<1||items.length>48)throw Error('O manifesto deve conter entre 1 e 48 imagens.');
   const seen=new Set();$('progress').max=items.length;$('progress').value=0;
   for(let i=0;i<items.length;i++){
    const x=items[i];
