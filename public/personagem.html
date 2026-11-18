@@ -1,54 +1,157 @@
-<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crónicas do Véu — Personagem</title><style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#2b3547,#10151e);color:#f3eadc;font:15px/1.5 system-ui;min-height:100vh}main{max-width:1000px;margin:auto;padding:25px}
-h1,h2{font-family:Georgia,serif;color:#e6bc79}h1{font-size:37px}.panel{background:#1c2533;border:1px solid #44556b;border-radius:14px;padding:22px;margin:16px 0}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}label{font-size:13px;color:#bacbda;display:block}
-input,select,textarea{width:100%;background:#0c1520;color:#fff;border:1px solid #586a7f;border-radius:8px;padding:11px;font:15px system-ui;margin-top:4px}
-button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8px;padding:12px 20px;font-weight:bold;cursor:pointer}a{color:#e6bf85}
-.abilities{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.abilities label{text-align:center}
-.notice{color:#e3c28c}.muted{color:#bbc9da;font-size:13px}@media(max-width:650px){.grid,.abilities{grid-template-columns:repeat(2,minmax(0,1fr))}}
-</style></head><body><main><a href="/personagens.html">← Personagens</a><h1>Criar personagem</h1>
-<p class="muted">Primeira versão do criador SRD 5.2.1: atributos por array padrão, origem, espécie, classe e ficha inicial. As opções especiais, perícias e magias detalhadas serão progressivamente integradas e verificadas contra o SRD.</p>
-<div class="panel"><h2 id="campaignTitle">Identidade da personagem</h2><div class="grid">
-<label>Nome<input id="name" value="Mendreas" maxlength="80"></label><label>Espécie<select id="species"><option>Humano</option><option selected>Elfo</option><option>Anão</option><option>Halfling</option><option>Draconato</option><option>Gnomo</option><option>Golias</option><option>Orc</option><option>Tiefling</option></select></label>
-<label>Classe<select id="cls"><option>Barbarian</option><option>Bard</option><option>Cleric</option><option>Druid</option><option>Fighter</option><option>Monk</option><option>Paladin</option><option>Ranger</option><option>Rogue</option><option>Sorcerer</option><option>Warlock</option><option selected>Wizard</option></select></label>
-<label>Antecedente<select id="background"><option>Acólito</option><option>Artesão</option><option>Artista</option><option>Charlatão</option><option>Criminoso</option><option>Ermitão</option><option>Fazendeiro</option><option>Guarda</option><option>Guia</option><option>Marinheiro</option><option selected>Sábio</option><option>Soldado</option><option>Mercador</option><option>Nobre</option><option>Escriba</option><option>Viajante</option></select></label>
-</div></div>
-<div class="panel"><h2>Atributos</h2><p class="muted">Distribui os valores 15, 14, 13, 12, 10 e 8 (antes dos bónus da origem). O sistema valida que cada valor é usado uma única vez.</p><div class="abilities" id="abilities"></div><p class="notice" id="statStatus"></p></div>
-<div class="panel"><h2>Identidade e equipamento</h2><label>Personalidade<textarea id="personality" rows="2">Positivo, carismático e curioso, procura desvendar mistérios.</textarea></label><label>História pessoal<textarea id="history" rows="2">Um mago errante interessado em manuscritos antigos e segredos esquecidos.</textarea></label><label>Equipamento<textarea id="equipment" rows="2">Cajado, livro de feitiços, manto de viagem, mochila</textarea></label><p class="muted">Na campanha solo, o teu grupo será completado por três companheiros IA. Os companheiros pertencem ao grupo de aventura, não à ficha permanente da tua personagem.</p><p class="muted">Bónus de atributos e talentos de origem serão aplicados numa etapa adicional. Esta ficha inicial não substitui ainda uma ficha SRD integral.</p><button id="start">Guardar personagem e escolher campanha</button><p id="notice" class="notice"></p></div>
-</main><script>
+<!doctype html>
+<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crónicas do Véu — Criar / Rever Personagem</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#2b3547,#10151e);color:#f3eadc;font:15px/1.5 system-ui;min-height:100vh}
+main{max-width:1100px;margin:auto;padding:25px}h1,h2{font-family:Georgia,serif;color:#e6bc79}h1{font-size:36px;margin-bottom:8px}h2{font-size:22px}.panel{background:#1c2533;border:1px solid #44556b;border-radius:14px;padding:22px;margin:16px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.abilities{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+label{font-size:13px;color:#bacbda;display:flex;flex-direction:column;gap:5px}input,select,textarea{width:100%;background:#0c1520;color:#fff;border:1px solid #586a7f;border-radius:8px;padding:11px;font:15px system-ui;min-width:0}
+button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8px;padding:12px 20px;font-weight:bold;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}a{color:#e6bf85}
+.notice{color:#e3c28c;min-height:22px}.muted{color:#bbc9da;font-size:13px}.success{color:#bce1be}.warn{color:#f4c47b}
+#skills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.skill{display:flex;flex-direction:row;align-items:center;gap:9px;border:1px solid #435a71;padding:11px;background:#111f30;border-radius:8px;cursor:pointer}.skill input{width:18px;height:18px;accent-color:#cb9f57}.skill:has(input:disabled){opacity:.7;cursor:default}
+.summary{padding:12px;border:1px solid #74613d;background:#2b2c2f;border-radius:9px;margin:10px 0}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row>*{flex:1}
+@media(max-width:700px){.grid,.abilities,#skills{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:440px){.grid,.abilities,#skills{grid-template-columns:1fr}}
+</style></head><body><main>
+<a href="/personagens.html">← Personagens</a><h1 id="heading">Criar personagem</h1>
+<p class="muted">Criação de nível 1 segundo o SRD 5.2.1: classe, antecedente, distribuição dos atributos, perícias de classe e opções de perícias da espécie. A ficha existente conserva XP, nível e aventuras quando a revês.</p>
+<div class="panel"><h2>1. Identidade e classe</h2><div class="grid">
+<label>Nome<input id="name" value="Mendreas" maxlength="80"></label>
+<label>Espécie<select id="species"><option>Humano</option><option>Elfo</option><option>Anão</option><option>Halfling</option><option>Draconato</option><option>Gnomo</option><option>Golias</option><option>Orc</option><option>Tiefling</option></select></label>
+<label>Classe<select id="cls"></select></label>
+<label>Antecedente (SRD)<select id="background"></select></label>
+</div><p class="muted">O SRD gratuito disponibiliza quatro antecedentes nesta implementação. Outros antecedentes necessitam de regras próprias antes de poderem ser validados.</p></div>
+<div class="panel"><h2>2. Pontuações base dos atributos</h2><p class="muted">Usa os valores <strong>15, 14, 13, 12, 10 e 8</strong>, cada um exatamente uma vez. Os aumentos do antecedente são aplicados abaixo.</p>
+<div id="abilities" class="abilities"></div><p id="statStatus" class="notice"></p>
+<h2>Aumentos do antecedente</h2><p id="backgroundRules" class="muted"></p>
+<div class="grid"><label>Distribuição<select id="bonusMode"><option value="dual">+2 a um atributo e +1 a outro</option><option value="triple">+1 aos três atributos</option></select></label><div class="grid" id="bonusDual"><label>+2 em<select id="bonusFirst"></select></label><label>+1 em<select id="bonusSecond"></select></label></div></div>
+<p id="finalStats" class="summary"></p></div>
+<div class="panel"><h2>3. Perícias da personagem</h2>
+<p id="backgroundSkills" class="summary"></p>
+<p id="skillStatus" class="notice"></p><div id="skills"></div>
+<div id="speciesSection"><h2>Perícia adicional da espécie</h2><p class="muted" id="speciesDesc"></p><label>Escolha da espécie<select id="speciesSkill"></select></label></div>
+<p id="totalSkills" class="summary"></p></div>
+<div class="panel"><h2>4. História e equipamento</h2>
+<label>Personalidade<textarea id="personality" rows="2">Positivo, carismático e curioso, procura desvendar mistérios.</textarea></label>
+<label>História pessoal<textarea id="history" rows="2">Um mago errante interessado em manuscritos antigos e segredos esquecidos.</textarea></label>
+<label>Equipamento<textarea id="equipment" rows="2">Cajado, livro de feitiços, manto de viagem, mochila</textarea></label>
+<p class="muted">O talento de origem e a proficiência de ferramenta do antecedente ficam registados. A sua utilização automática em combate e conjuração continua por desenvolver.</p>
+<div class="row"><button id="start">Guardar personagem e escolher campanha</button><a href="/personagens.html">Cancelar</a></div><p id="notice" class="notice" role="status"></p></div>
+</main>
+<script type="module">
+import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
+import {initialSavingThrows} from '/rules-2024.mjs';
 const $=id=>document.getElementById(id);
-const editId=new URLSearchParams(location.search).get('editar');
-const existing=editId?JSON.parse(localStorage.getItem('cv-character-'+editId)||'null'):null;
+const params=new URLSearchParams(location.search),editId=params.get('editar');
+let existing=null;try{existing=editId?JSON.parse(localStorage.getItem('cv-character-'+editId)||'null'):null}catch{}
+if(editId&&!existing){$('notice').textContent='Ficha antiga indisponível neste navegador.';$('start').disabled=true}
 if(existing){
- $('name').value=existing.nome||'';
- $('species').value=existing.raca||'Elfo';
- $('cls').value=existing.classe||'Wizard';
- $('background').value=existing.antecedente||'Sábio';
- $('personality').value=existing.personalidade||'';
- $('history').value=existing.historia||'';
- $('equipment').value=existing.equipamento||'';
- $('start').textContent='Guardar alterações e escolher campanha';
+ $('heading').textContent='Rever ficha de '+(existing.nome||'Personagem');
+ $('start').textContent='Guardar ficha revista';
+ for(const [id,key] of [['name','nome'],['species','raca'],['personality','personalidade'],['history','historia'],['equipment','equipamento']])if(existing[key]!==undefined)$(id).value=existing[key];
 }
-const abilities=['Força','Destreza','Constituição','Inteligência','Sabedoria','Carisma'];const ids=['str','dex','con','int','wis','cha'];
-const startValues=ids.map((k,i)=>existing?.atributos?.[k]??[8,13,12,15,10,14][i]);
-for(let i=0;i<ids.length;i++){const label=document.createElement('label');label.textContent=abilities[i];const sel=document.createElement('select');sel.id=ids[i];for(const n of [8,10,12,13,14,15]){const opt=document.createElement('option');opt.value=n;opt.textContent=n;if(n===startValues[i])opt.selected=true;sel.append(opt)}sel.onchange=check;label.append(sel);$('abilities').append(label)}
-function check(){const vals=ids.map(x=>Number($(x).value));const valid=new Set(vals).size===6;$('statStatus').textContent=valid?'Distribuição válida.':'Cada valor só pode ser utilizado uma vez.';return valid}check();
+const classes=Object.keys(CLASS_SKILLS);
+for(const id of classes){const op=document.createElement('option');op.value=id;op.textContent=id;$('cls').append(op)}
+$('cls').value=existing?.classe&&CLASS_SKILLS[existing.classe]?existing.classe:'Wizard';
+for(const name of Object.keys(BACKGROUNDS)){const op=document.createElement('option');op.value=name;op.textContent=name;$('background').append(op)}
+$('background').value=BACKGROUNDS[existing?.antecedente]?existing.antecedente:'Sábio';
+const base=(existing?.atributosBase&&Object.values(existing.atributosBase).every(Number.isFinite))
+ ?existing.atributosBase:existing?.atributos&&STANDARD_ARRAY.every(n=>Object.values(existing.atributos).includes(n))?existing.atributos:{str:8,dex:13,con:12,int:15,wis:10,cha:14};
+for(const [i,code] of ABILITY_CODES.entries()){
+ const label=document.createElement('label');label.textContent=ABILITY_LABELS[code];
+ const sel=document.createElement('select');sel.id='ab-'+code;
+ for(const value of [8,10,12,13,14,15]){const op=document.createElement('option');op.value=value;op.textContent=value;sel.append(op)}
+ sel.value=String(base[code]??[8,13,12,15,10,14][i]);sel.onchange=update;label.append(sel);$('abilities').append(label);
+}
+$('bonusMode').value=existing?.modoBonus==='triple'?'triple':'dual';
+let chosen=Array.isArray(existing?.periciasClasse)?[...existing.periciasClasse]:[];
+let speciesSelected=existing?.periciaEspecie||'';
+function currentBase(){return Object.fromEntries(ABILITY_CODES.map(k=>[k,Number($('ab-'+k).value)]))}
+function fillSelect(el,entries,wanted){
+ el.replaceChildren();for(const [value,label] of entries){const opt=document.createElement('option');opt.value=value;opt.textContent=label;el.append(opt)}
+ if(entries.some(([k])=>k===wanted))el.value=wanted;
+}
+function update(){
+ const bg=BACKGROUNDS[$('background').value],cls=CLASS_SKILLS[$('cls').value];
+ if(!bg||!cls)return;
+ const attrs=bg.abilities;
+ const previousFirst=$('bonusFirst').value||existing?.bonusPrincipal||attrs[0];
+ const previousSecond=$('bonusSecond').value||existing?.bonusSecundario||attrs[1];
+ fillSelect($('bonusFirst'),attrs.map(a=>[a,ABILITY_LABELS[a]]),previousFirst);
+ fillSelect($('bonusSecond'),attrs.map(a=>[a,ABILITY_LABELS[a]]),previousSecond);
+ if($('bonusFirst').value===$('bonusSecond').value)$('bonusSecond').value=attrs.find(a=>a!==$('bonusFirst').value);
+ $('bonusDual').hidden=$('bonusMode').value==='triple';
+ $('backgroundRules').textContent='Podes melhorar apenas '+attrs.map(a=>ABILITY_LABELS[a]).join(', ')+'. Talento de origem: '+bg.feat+'. Ferramenta: '+bg.tool+'.';
+ $('backgroundSkills').textContent='Perícias obrigatórias do antecedente: '+bg.skills.join(' e ')+'. Estas não gastam as escolhas da classe.';
+ const pool=cls.skills.filter(s=>!bg.skills.includes(s));
+ chosen=chosen.filter(s=>pool.includes(s));
+ if(chosen.length>cls.count)chosen=chosen.slice(0,cls.count);
+ const box=$('skills');box.replaceChildren();
+ for(const name of pool){
+  const label=document.createElement('label');label.className='skill';const check=document.createElement('input');check.type='checkbox';check.checked=chosen.includes(name);
+  check.onchange=()=>{if(check.checked){if(chosen.length>=cls.count){check.checked=false;return}chosen.push(name)}else chosen=chosen.filter(x=>x!==name);update()};
+  label.append(check,document.createTextNode(name));box.append(label);
+ }
+ const options=$('species').value==='Elfo'?['Intuição','Perceção','Sobrevivência']:$('species').value==='Humano'?SKILL_NAMES:[];
+ const available=options.filter(s=>!bg.skills.includes(s)&&!chosen.includes(s));
+ $('speciesSection').hidden=!options.length;
+ $('speciesDesc').textContent=$('species').value==='Elfo'?'Sentidos Aguçados: escolhe uma perícia entre Intuição, Perceção e Sobrevivência.':'Versátil: escolhe uma perícia adicional.';
+ fillSelect($('speciesSkill'),[['','Selecionar...'],...available.map(x=>[x,x])],speciesSelected);
+ speciesSelected=$('speciesSkill').value;
+ $('skillStatus').textContent='Escolhas da classe: '+chosen.length+' / '+cls.count+'. Só podes selecionar '+cls.count+' perícias desta lista.';
+ $('totalSkills').textContent='Total previsto: '+(cls.count+2+(options.length?1:0))+' perícias sem duplicação (antecedente + classe'+(options.length?' + espécie':'')+').';
+ const v=Object.values(currentBase()),valid=STANDARD_ARRAY.every(x=>v.includes(x))&&new Set(v).size===6;
+ $('statStatus').textContent=valid?'Array padrão válido.':'Corrige os atributos: todos os seis valores devem ser diferentes.';
+ try{
+  const total=abilityIncrease(currentBase(),$('background').value,$('bonusMode').value,$('bonusFirst').value,$('bonusSecond').value);
+  $('finalStats').textContent='Atributos finais: '+ABILITY_CODES.map(k=>ABILITY_LABELS[k]+' '+total[k]).join(' · ');
+ }catch(e){$('finalStats').textContent=e.message}
+ $('start').disabled=!!editId&&!existing;
+}
+for(const id of ['background','cls','species','bonusMode','bonusFirst','bonusSecond'])$(id).addEventListener('change',()=>{
+ if(id==='cls'||id==='background')chosen=[];
+ if(id==='species'||id==='background')speciesSelected='';
+ update();
+});
+$('speciesSkill').onchange=()=>{speciesSelected=$('speciesSkill').value;update()};
+update();
+// Pré-seleção legal na revisão, nunca copiar proficiências arbitrárias de uma ficha antiga.
+if(existing&&!existing.criacaoValidada){
+ const bg=BACKGROUNDS[$('background').value],cls=CLASS_SKILLS[$('cls').value];
+ const prior=Array.isArray(existing.periciasProficientes)?existing.periciasProficientes:[];
+ chosen=prior.filter(x=>cls.skills.includes(x)&&!bg.skills.includes(x)).slice(0,cls.count);
+ if($('species').value==='Elfo')speciesSelected=prior.find(x=>['Intuição','Perceção','Sobrevivência'].includes(x)&&!chosen.includes(x))||'';
+ else if($('species').value==='Humano')speciesSelected=prior.find(x=>!bg.skills.includes(x)&&!chosen.includes(x))||'';
+ update();
+ $('notice').textContent='Esta ficha foi criada antes da validação do SRD. Revê e confirma as escolhas; nível, experiência, inventário e campanhas serão conservados.';
+}
 $('start').onclick=()=>{
- if(!check())return;
- const name=$('name').value.trim();
- if(!name){$('notice').textContent='Escreve o nome da personagem.';return}
- const attrs=Object.fromEntries(ids.map(k=>[k,Number($(k).value)]));
- const hpbase={Barbarian:12,Fighter:10,Paladin:10,Ranger:10,Bard:8,Cleric:8,Druid:8,Monk:8,Rogue:8,Warlock:8,Sorcerer:6,Wizard:6};
- const hp=Math.max(1,(hpbase[$('cls').value]||8)+Math.floor((attrs.con-10)/2));
- const charId=editId||crypto.randomUUID();
- const c={id:charId,nome:name,raca:$('species').value,classe:$('cls').value,antecedente:$('background').value,
-  nivel:existing?.nivel||1,pv:existing?.pv??hp,pvMax:existing?.pvMax??hp,atributos:attrs,
-  personalidade:$('personality').value,historia:$('history').value,equipamento:$('equipment').value,
-  experiencia:existing?.experiencia||0,updated:Date.now()};
- localStorage.setItem('cv-character-'+charId,JSON.stringify(c));
- const list=JSON.parse(localStorage.getItem('cv-character-index')||'[]');
- if(!list.includes(charId)){list.unshift(charId);localStorage.setItem('cv-character-index',JSON.stringify(list))}
- localStorage.setItem('cv-active-character',charId);
- location.href='/campanhas.html?personagem='+encodeURIComponent(charId);
+ if(!existing&&editId)return;
+ const nome=$('name').value.trim();if(!nome){$('notice').textContent='Escreve o nome da personagem.';return}
+ let valid;
+ try{valid=validateCreation({
+   classe:$('cls').value,antecedente:$('background').value,raca:$('species').value,
+   periciasClasse:chosen,periciaEspecie:$('speciesSection').hidden?'':speciesSelected,
+   atributosBase:currentBase(),modoBonus:$('bonusMode').value,bonusPrincipal:$('bonusFirst').value,bonusSecundario:$('bonusSecond').value
+  })}catch(e){$('notice').textContent=e.message;return}
+ const attrs=valid.atributos,con=Math.floor((attrs.con-10)/2);
+ const hpDie={Barbarian:12,Fighter:10,Paladin:10,Ranger:10,Bard:8,Cleric:8,Druid:8,Monk:8,Rogue:8,Warlock:8,Sorcerer:6,Wizard:6}[$('cls').value]||8;
+ const hp=Math.max(1,hpDie+con);
+ const id=editId||crypto.randomUUID();
+ const saved=existing||{};
+ const c={...saved,id,nome,raca:$('species').value,classe:$('cls').value,antecedente:$('background').value,
+  atributos:attrs,atributosBase:currentBase(),modoBonus:$('bonusMode').value,bonusPrincipal:$('bonusFirst').value,bonusSecundario:$('bonusSecond').value,
+  periciasClasse:[...chosen],periciaEspecie:$('speciesSection').hidden?'':speciesSelected,
+  periciasProficientes:valid.periciasProficientes,
+  salvaguardasProficientes:initialSavingThrows($('cls').value),
+  talentoOrigem:valid.talentoOrigem,profFerramenta:valid.profFerramenta,
+  criacaoValidada:true,creationRevision:Date.now(),
+  nivel:saved.nivel||1,experiencia:saved.experiencia||0,pvMax:saved.pvMax??hp,pv:saved.pv??hp,
+  personalidade:$('personality').value,historia:$('history').value,equipamento:$('equipment').value,updated:Date.now()};
+ localStorage.setItem('cv-character-'+id,JSON.stringify(c));
+ let ids=[];try{ids=JSON.parse(localStorage.getItem('cv-character-index')||'[]')}catch{}
+ if(!ids.includes(id))ids.unshift(id);
+ localStorage.setItem('cv-character-index',JSON.stringify(ids));localStorage.setItem('cv-active-character',id);
+ location.href=editId?'/personagens.html':'/campanhas.html?personagem='+encodeURIComponent(id);
 };
 </script></body></html>
