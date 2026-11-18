@@ -40,7 +40,7 @@ export default async (request) => {
     // Corrigir apenas um regresso explícito à torre, não meras referências às ruínas.
     const returnedToTower=campaign==='O Limiar do Véu'&&lastLocation==='aldeia-blackwood'
       &&location==='aldeia-blackwood'
-      &&/(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\\s+(?:de novo\\s+)?(?:[àa]\\s+|para\\s+|junto\\s+[àa]\\s+|perto\\s+d[aeo]\\s+)?(?:entrada\\s+d[aeo]\\s+)?(?:torre|ru[ií]nas)|(?:[àa]\\s+)?entrada\\s+d[aeo]\\s+torre/i.test(clean);
+      &&/(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\s+(?:de novo\s+)?(?:[àa]\s+|para\s+|junto\s+[àa]\s+|perto\s+d[aeo]\s+)?(?:entrada\s+d[aeo]\s+)?(?:torre|ru[ií]nas)|(?:[àa]\s+)?entrada\s+d[aeo]\s+torre/i.test(clean);
     const resolvedLocation=returnedToTower?'blackwood-ruinas':location;
     // Extract player choices into explicit UI actions instead of repeating them in the narrative.
     // Supports 1. / 1) and optional Markdown formatting.
