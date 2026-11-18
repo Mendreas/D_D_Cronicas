@@ -205,32 +205,44 @@ async function illustrate(locationKey,force=false){
  if(!locationKey||artBusy)return;
  artBusy=true;$('retryImage').hidden=true;render();
  try{
-  const local=force?'':await imageCache(imageKey(locationKey));
-  if(local){
-   if(scene===locationKey){artwork=local;if(!detailView)displayImage(local)}
-   return;
-  }
-  if(scene===locationKey&&!detailView){artwork='';displayImage('');setNotice('A procurar a imagem guardada no Supabase…')}
-  let url=await getScene('location_base',force?'generate':'lookup',locationKey);
+  // O Supabase é sempre a referência principal para todos os dispositivos.
+  if(scene===locationKey&&!detailView){artwork='';displayImage('');setNotice('A procurar a imagem no Supabase…')}
+  let url=await getScene('location_base','lookup',locationKey);
   if(!url){
-   setNotice('A gerar o local e a guardar no Supabase…');
+   // Imagens anteriores ao Supabase podem estar no IndexedDB do mesmo domínio.
+   // Importá-las preserva a imagem original e não origina qualquer custo OpenAI.
+   let local='';
+   try{local=await imageCache(imageKey(locationKey))}catch{}
+   if(local&&/^data:image\/jpeg;base64,/i.test(local)){
+    if(scene===locationKey&&!detailView){artwork=local;displayImage(local);setNotice('A transferir a imagem antiga para o Supabase…')}
+    try{
+     const result=await request('/.netlify/functions/scene-cache',{
+      kind:'location_base',mode:'import',campaign_id:game.campaignId,
+      location_id:locationKey,save_id:saveId,image_data:local
+     });
+     if(result.status==='ready')url=result.url;
+     else if(result.status==='pending')url=await getScene('location_base','lookup',locationKey);
+    }catch(e){setNotice('A imagem antiga aparece, mas a transferência falhou: '+e.message);artwork=local;return}
+   }
+  }
+  if(!url){
+   if(scene===locationKey)setNotice('A gerar uma imagem nova e a guardar no Supabase…');
    url=await getScene('location_base','generate',locationKey);
   }
   if(url&&scene===locationKey){
    artwork=url;if(!detailView)displayImage(url);
-   setNotice('Imagem do local guardada no Supabase para futuras visitas.');
+   setNotice('Imagem recuperada do Supabase; será a mesma noutros dispositivos.');
   }
  }catch(e){
   if(scene===locationKey){$('retryImage').hidden=false;setNotice('Erro na imagem: '+e.message)}
- }finally{artBusy=false;render()}
+ }finally{
+  artBusy=false;render();
+  if(scene!==locationKey&&!artwork&&scene)void illustrate(scene);
+ }
 }
 async function loadSceneImage(){
  artwork='';if(!detailView)displayImage('');
  if(!scene)return;
- try{
-  const local=await imageCache(imageKey(scene));
-  if(local){artwork=local;if(!detailView)displayImage(local);return}
- }catch(e){setNotice('Cache local indisponível: '+e.message)}
  void illustrate(scene);
 }
 function updatedLocation(id){
