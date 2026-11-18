@@ -71,6 +71,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <script type="module">
 import {abilityCheck,proficiencyBonus,modifier} from '/rules-2024.mjs';
 import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
+import {advanceMember,mergeParty,readParty,saveParty} from '/progression.mjs';
 const $=id=>document.getElementById(id);
 const saveId=new URLSearchParams(location.search).get('save');
 const saveKey=saveId?'cv-save-'+saveId:null;
@@ -117,6 +118,25 @@ if(mislabelledOpening){
 }
 if(mislabelledReturn)game.currentLocation=scene;
 if(scene&&!visited.includes(scene))visited.push(scene);
+// A ficha e os aliados partilham a progressão mesmo em saves antigos.
+const sharedProfileId=game?.characterId||game?.character?.id||'';
+let sharedProfile=null;
+try{sharedProfile=sharedProfileId?JSON.parse(localStorage.getItem('cv-character-'+sharedProfileId)||'null'):null}catch{}
+if(game?.character&&sharedProfile){
+ const localHero=game.character;
+ if((Number(sharedProfile.experiencia)||0)>(Number(localHero.experiencia)||0)
+    ||Number(sharedProfile.nivel||1)>Number(localHero.nivel||1))
+  game.character={...localHero,...sharedProfile,companheiros:localHero.companheiros||[]};
+}
+if(game?.character){
+ const savedParty=readParty(sharedProfileId);
+ const currentParty=game.character.companheiros||[];
+ const localBest=currentParty.some(a=>(Number(a.experiencia)||0)>0||(Number(a.nivel)||1)>1);
+ const globalBest=savedParty?.some(a=>(Number(a.experiencia)||0)>0||(Number(a.nivel)||1)>1);
+ const best=(globalBest||(!localBest&&savedParty))?savedParty:currentParty;
+ game.character.companheiros=mergeParty(best);
+ if(sharedProfileId&&!globalBest)saveParty(sharedProfileId,game.character.companheiros);
+}
 const char=game?.character||null;
 if(!game||!char){location.replace('/personagens.html')}
 let loggedIn=false;
@@ -137,12 +157,14 @@ function saveGame(announce=false){
   if(existing){
    const next={...existing,equipamento:char.equipamento,personalidade:char.personalidade,
      historia:char.historia,updated:Date.now()};
-   if(Number(char.nivel||1)>Number(existing.nivel||1)){
+   if(Number(char.experiencia||0)>=Number(existing.experiencia||0)){
+     next.experiencia=char.experiencia||0;
      next.nivel=char.nivel;next.pvMax=char.pvMax;next.pv=char.pv;
    }
    localStorage.setItem(pkey,JSON.stringify(next));
   }
  }
+ if(profileId)saveParty(profileId,mergeParty(char.companheiros));
  if(announce)setNotice('Aventura guardada neste navegador.');
 }
 function render(){
@@ -339,7 +361,13 @@ async function runTurn(action,{initial=false}={}){
   messages.push({role:'assistant',content:result.text,choices:Array.isArray(result.choices)?result.choices:[]});
   detailView=false;detailArtwork='';detailKey='';$('baseImage').hidden=true;
   updatedLocation(result.location);
-  saveGame();render();setNotice('Cena concluída. Podes decidir a próxima ação.');
+  const xp=Math.max(0,Math.min(150,Number(result.experience_award)||0));
+  if(xp>0){
+   Object.assign(char,advanceMember(char,xp));
+   char.companheiros=(char.companheiros||[]).map(ally=>advanceMember(ally,xp));
+  }
+  saveGame();render();
+  setNotice(xp?'Cena concluída. O grupo recebeu '+xp+' XP por um objetivo alcançado.':'Cena concluída. Podes decidir a próxima ação.');
  }catch(e){messages=previous;render();setNotice('Não foi possível continuar: '+e.message+(initial?' Clica em Tentar iniciar para repetir.':''));if(initial){firstAttempted=false;$('retryStart').hidden=false}}
  finally{busy=false;render()}
 }
@@ -379,7 +407,7 @@ function showSheet(){
   root.append(grid);field(root,'Personalidade',char.personalidade);field(root,'História',char.historia);
   root.append(make('h3','Companheiros IA'));
   for(const ally of char.companheiros||[])root.append(make('div',(ally.nome||'Aliado')+' · '+ally.classe+' · '+ally.papel,'pill'));
-  root.append(make('p','Ficha de regras ainda em desenvolvimento. A progressão automática e o combate SRD completo não estão implementados.','helper'));
+  root.append(make('p','Experiência: '+(char.experiencia||0)+' XP. Nível e PV partilhados entre aventuras neste navegador. Talentos, magias e combate SRD completos ainda em desenvolvimento.','helper'));
  })
 }
 function showInventory(){
