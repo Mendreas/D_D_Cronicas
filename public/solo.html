@@ -98,7 +98,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 </main>
 <div id="modalBackdrop" class="modal-backdrop" hidden role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button class="secondary" id="modalClose">Fechar ✕</button></div><div id="modalBody"></div></div></div>
 <script type="module">
-import {abilityCheck,proficiencyBonus,modifier,SKILLS_2024,skillBonus,savingThrowBonus,classHitDie,spellAbility,rollDice} from '/rules-2024.mjs';
+import {abilityCheck,proficiencyBonus,modifier,SKILLS_2024,skillBonus,savingThrowBonus,classHitDie,spellAbility,rollDice,initialSavingThrows} from '/rules-2024.mjs';
 import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
 import {renderCampaignMap} from '/mapas.mjs';
 import {advanceMember,mergeParty,readParty,saveParty} from '/progression.mjs';
@@ -540,7 +540,7 @@ function showSheet(){
    score.append(make('small',name),make('strong',value+' ('+signed(modifier(value))+')'));abilities.append(score);
   }
   root.append(make('h3','Atributos'),abilities);
-  char.salvaguardasProficientes=Array.isArray(char.salvaguardasProficientes)?char.salvaguardasProficientes:[];
+  char.salvaguardasProficientes=Array.isArray(char.salvaguardasProficientes)?char.salvaguardasProficientes:initialSavingThrows(char.classe);
   char.periciasProficientes=Array.isArray(char.periciasProficientes)?char.periciasProficientes:[];
   char.periciasEspecialistas=Array.isArray(char.periciasEspecialistas)?char.periciasEspecialistas:[];
   const saves=make('div',undefined,'sheet-skill-grid');
