@@ -61,7 +61,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 </style></head>
 <body>
 <header><div class="brand">✦ Crónicas do Véu</div>
-<nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa-local">Mapa local</button><button class="secondary" data-view="mapa-geral">Mapa geral</button><button id="saveBtn">Guardar</button><button id="logoutBtn" class="secondary" title="Terminar sessão Supabase">Sair</button></nav>
+<nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa">Mapa</button><button id="saveBtn">Guardar</button><button id="logoutBtn" class="secondary" title="Terminar sessão Supabase">Sair</button></nav>
 <div id="campaignTitle">Aventura solo</div></header>
 <main>
 <div id="accessBar" class="access" hidden><span>Para jogar, inicia sessão na tua conta Supabase.</span> <a href="/login.html">Entrar</a></div>
@@ -514,8 +514,7 @@ for(const btn of document.querySelectorAll('[data-view]')){
   const type=btn.dataset.view;
   if(type==='ficha')showSheet();
   else if(type==='inventario')showInventory();
-  else if(type==='mapa-local')showLocalMap();
-  else if(type==='mapa-geral')showWorldMap();
+  else if(type==='mapa')showWorldMap();
  }
 }
 async function init(){
