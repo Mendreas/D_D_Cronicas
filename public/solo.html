@@ -167,12 +167,14 @@ let selectedVariant=()=>Number(locationVisits[scene]||1)%2===0?'b':'a';
 let artwork='',busy=false,artBusy=false,firstAttempted=false;
 let detailView=false,detailArtwork='',detailKey='';
 let visited=Array.isArray(game?.visitedLocations)?game.visitedLocations:[];
+let travelHistory=Array.isArray(game?.travelHistory)?game.travelHistory.slice(-120):[...visited];
 if(mislabelledOpening){
  visited=visited.filter(v=>canonicalLocation(v)!=='aldeia-blackwood');
  game.currentLocation=scene;
 }
 if(mislabelledReturn||recoveredSavedScene)game.currentLocation=scene;
 if(scene&&!visited.includes(scene))visited.push(scene);
+if(scene&&travelHistory.at(-1)!==scene)travelHistory.push(scene);
 // A ficha e os aliados partilham a progressão mesmo em saves antigos.
 const sharedProfileId=game?.characterId||game?.character?.id||'';
 let sharedProfile=null;
@@ -207,7 +209,7 @@ const placeName=s=>locationNames[(game?.campaignId||'')+'|'+s]||
 function setNotice(t){$('notice').textContent=t}
 function showAccess(){ $('accessBar').hidden=loggedIn;if(!loggedIn)setNotice('Inicia sessão para o Mestre de Jogo continuar a aventura.');}
 function saveGame(announce=false){
- game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.locationVisits=locationVisits;game.updated=Date.now();
+ game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.travelHistory=travelHistory.slice(-120);game.locationVisits=locationVisits;game.updated=Date.now();
  localStorage.setItem(saveKey,JSON.stringify(game));
  const profileId=game.characterId||char.id;
  if(profileId){
@@ -380,7 +382,7 @@ async function loadSceneImage(){
 function updatedLocation(id){
  const next=canonicalLocation(id||scene||'local-inicial');
  if(next!==scene){
-  scene=next;locationVisits[scene]=(Number(locationVisits[scene])||0)+1;
+  scene=next;travelHistory.push(next);travelHistory=travelHistory.slice(-120);locationVisits[scene]=(Number(locationVisits[scene])||0)+1;
   detailView=false;detailArtwork='';detailKey='';
   $('baseImage').hidden=true;
   if(!visited.includes(scene))visited.push(scene);
@@ -499,12 +501,12 @@ function showInventory(){
 }
 function showLocalMap(){
  openModal('Mapa local — '+placeName(scene),root=>{
-  renderCampaignMap(root,{campaignId:game.campaignId,currentLocation:scene,visited,mode:'interior'});
+  renderCampaignMap(root,{campaignId:game.campaignId,currentLocation:scene,visited,history:travelHistory,mode:'auto'});
  });
 }
 function showWorldMap(){
  openModal('Mapa geral — '+(game.campaign||'Aventura'),root=>{
-  renderCampaignMap(root,{campaignId:game.campaignId,currentLocation:scene,visited,mode:'global'});
+  renderCampaignMap(root,{campaignId:game.campaignId,currentLocation:scene,visited,history:travelHistory,mode:'global'});
  });
 }
 for(const btn of document.querySelectorAll('[data-view]')){
