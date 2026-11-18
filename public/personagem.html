@@ -137,6 +137,11 @@ $('start').onclick=()=>{
  const attrs=valid.atributos,con=Math.floor((attrs.con-10)/2);
  const hpDie={Barbarian:12,Fighter:10,Paladin:10,Ranger:10,Bard:8,Cleric:8,Druid:8,Monk:8,Rogue:8,Warlock:8,Sorcerer:6,Wizard:6}[$('cls').value]||8;
  const hp=Math.max(1,hpDie+con);
+ // Rever Constituição também ajusta os PV máximos por cada nível já adquirido.
+ const oldCon=Math.floor((Number(existing?.atributos?.con??attrs.con)-10)/2);
+ const hpAdjustment=existing?(con-oldCon)*(Number(existing.nivel)||1):0;
+ const maxHP=existing?Math.max(1,(Number(existing.pvMax)||hp)+hpAdjustment):hp;
+ const currentHP=existing?Math.max(0,Math.min(maxHP,(Number(existing.pv??maxHP))+hpAdjustment)):hp;
  const id=editId||crypto.randomUUID();
  const saved=existing||{};
  const c={...saved,id,nome,raca:$('species').value,classe:$('cls').value,antecedente:$('background').value,
@@ -146,7 +151,8 @@ $('start').onclick=()=>{
   salvaguardasProficientes:initialSavingThrows($('cls').value),
   talentoOrigem:valid.talentoOrigem,profFerramenta:valid.profFerramenta,
   criacaoValidada:true,creationRevision:Date.now(),
-  nivel:saved.nivel||1,experiencia:saved.experiencia||0,pvMax:saved.pvMax??hp,pv:saved.pv??hp,
+  nivel:saved.nivel||1,experiencia:saved.experiencia||0,pvMax:maxHP,pv:currentHP,
+  periciasEspecialistas:saved.criacaoValidada?(saved.periciasEspecialistas||[]).filter(s=>valid.periciasProficientes.includes(s)):[],
   personalidade:$('personality').value,historia:$('history').value,equipamento:$('equipment').value,updated:Date.now()};
  localStorage.setItem('cv-character-'+id,JSON.stringify(c));
  let ids=[];try{ids=JSON.parse(localStorage.getItem('cv-character-index')||'[]')}catch{}
