@@ -142,7 +142,7 @@ if(!game||!char){location.replace('/personagens.html')}
 let loggedIn=false;
 $('campaignTitle').textContent=game?.campaign||'Aventura solo';
 $('sceneTitle').textContent=game?.campaign||'Aventura';
-$('partyStatus').textContent=[char?.nome||'Jogador',...(char?.companheiros||[]).map(c=>c.nome)].join(' · ');
+$('partyStatus').textContent=[(char?.nome||'Jogador')+' (Nv. '+(char?.nivel||1)+')',...(char?.companheiros||[]).map(c=>c.nome+' (Nv. '+(c.nivel||1)+')')].join(' · ');
 const placeName=s=>locationNames[(game?.campaignId||'')+'|'+s]||
  (s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
 function setNotice(t){$('notice').textContent=t}
@@ -159,6 +159,7 @@ function saveGame(announce=false){
      historia:char.historia,updated:Date.now()};
    if(Number(char.experiencia||0)>=Number(existing.experiencia||0)){
      next.experiencia=char.experiencia||0;
+     next.conquistas=Array.isArray(char.conquistas)?char.conquistas:[];
      next.nivel=char.nivel;next.pvMax=char.pvMax;next.pv=char.pv;
    }
    localStorage.setItem(pkey,JSON.stringify(next));
@@ -361,9 +362,14 @@ async function runTurn(action,{initial=false}={}){
   messages.push({role:'assistant',content:result.text,choices:Array.isArray(result.choices)?result.choices:[]});
   detailView=false;detailArtwork='';detailKey='';$('baseImage').hidden=true;
   updatedLocation(result.location);
-  const xp=Math.max(0,Math.min(150,Number(result.experience_award)||0));
+  const milestone=String(result.achievement_id||'');
+  const completed=new Set(Array.isArray(char.conquistas)?char.conquistas:[]);
+  const xp=milestone&&!completed.has(milestone)
+    ?Math.max(0,Math.min(150,Number(result.experience_award)||0)):0;
   if(xp>0){
+   completed.add(milestone);
    Object.assign(char,advanceMember(char,xp));
+   char.conquistas=[...completed];
    char.companheiros=(char.companheiros||[]).map(ally=>advanceMember(ally,xp));
   }
   saveGame();render();
@@ -406,7 +412,7 @@ function showSheet(){
   for(const [code,name] of Object.entries(abilities)){const block=make('div',undefined,'stat'),score=Number(char.atributos?.[code]||10),mod=modifier(score);block.append(make('small',name),make('strong',score+' ('+(mod>=0?'+':'')+mod+')'));grid.append(block)}
   root.append(grid);field(root,'Personalidade',char.personalidade);field(root,'História',char.historia);
   root.append(make('h3','Companheiros IA'));
-  for(const ally of char.companheiros||[])root.append(make('div',(ally.nome||'Aliado')+' · '+ally.classe+' · '+ally.papel,'pill'));
+  for(const ally of char.companheiros||[])root.append(make('div',(ally.nome||'Aliado')+' · '+ally.classe+' · Nível '+(ally.nivel||1)+' · '+(ally.experiencia||0)+' XP · PV '+(ally.pv??'?')+'/'+(ally.pvMax??'?'),'pill'));
   root.append(make('p','Experiência: '+(char.experiencia||0)+' XP. Nível e PV partilhados entre aventuras neste navegador. Talentos, magias e combate SRD completos ainda em desenvolvimento.','helper'));
  })
 }
