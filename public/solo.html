@@ -89,6 +89,12 @@ const mislabelledOpening=game?.campaignId==='veu'&&scene==='aldeia-blackwood'
  &&openingNarrative.length===1&&!messages.some(m=>m.role==='user'&&!m.internal)
  &&/ru[ií]nas.{0,100}torre|torre.{0,100}ru[ií]nas/i.test(openingNarrative[0].content||'');
 if(mislabelledOpening)scene='blackwood-ruinas';
+// Reparar o último turno já guardado quando a narrativa chegou à entrada da torre,
+// mas o marcador LOCAL continuou incorretamente na aldeia.
+const lastNarratedScene=[...messages].reverse().find(m=>m.role==='assistant')?.content||'';
+const mislabelledReturn=game?.campaignId==='veu'&&scene==='aldeia-blackwood'
+ &&/(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\\s+(?:de novo\\s+)?(?:[àa]\\s+|para\\s+|junto\\s+[àa]\\s+|perto\\s+d[aeo]\\s+)?(?:entrada\\s+d[aeo]\\s+)?(?:torre|ru[ií]nas)|(?:[àa]\\s+)?entrada\\s+d[aeo]\\s+torre/i.test(lastNarratedScene);
+if(mislabelledReturn)scene='blackwood-ruinas';
 const locationNames={
  'veu|aldeia-blackwood':'Aldeia de Blackwood',
  'veu|blackwood-ruinas':'Ruínas da Torre de Blackwood',
@@ -109,6 +115,7 @@ if(mislabelledOpening){
  visited=visited.filter(v=>canonicalLocation(v)!=='aldeia-blackwood');
  game.currentLocation=scene;
 }
+if(mislabelledReturn)game.currentLocation=scene;
 if(scene&&!visited.includes(scene))visited.push(scene);
 const char=game?.character||null;
 if(!game||!char){location.replace('/personagens.html')}
@@ -402,7 +409,7 @@ for(const btn of document.querySelectorAll('[data-view]')){
 }
 async function init(){
  const token=await requireLogin();if(!token)return;
- loggedIn=true;if(mislabelledOpening)saveGame();render();showAccess();
+ loggedIn=true;if(mislabelledOpening||mislabelledReturn)saveGame();render();showAccess();
  if(!messages.some(x=>x.role==='assistant')){
    if(loggedIn)void begin();
  }else if(scene){await loadSceneImage()}
