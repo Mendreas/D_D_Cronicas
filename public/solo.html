@@ -350,6 +350,19 @@ async function showDetailedImage(){
 }
 $('actionImage').onclick=()=>{void showDetailedImage()};
 $('baseImage').onclick=()=>{detailView=false;$('baseImage').hidden=true;displayImage(artwork)};
+function previousAdventures(){
+ const ids=JSON.parse(localStorage.getItem('cv-save-index')||'[]');
+ const selected=(game?.characterId||char?.id||'');
+ return ids.filter(id=>id!==saveId).map(id=>{
+  let other=null;try{other=JSON.parse(localStorage.getItem('cv-save-'+id)||'null')}catch{}
+  if(!other||(other.characterId||other.character?.id)!==selected)return null;
+  const recent=[...(other.messages||[])].reverse().find(m=>m.role==='assistant')?.content||'';
+  return {title:other.campaign||'Aventura anterior',
+    heroLevel:Number(other.character?.nivel)||1,
+    group:(other.character?.companheiros||[]).map(a=>a.nome+' nível '+(a.nivel||1)),
+    lastEvent:recent.slice(-650)};
+ }).filter(Boolean).slice(0,2);
+}
 async function runTurn(action,{initial=false}={}){
  if(busy)return;
  busy=true;$('send').disabled=true;
@@ -357,7 +370,7 @@ async function runTurn(action,{initial=false}={}){
  messages.push({role:'user',content:action,internal:initial});
  render();setNotice(initial?'O Mestre está a preparar o prólogo…':'O Mestre está a responder à tua ação…');
  try{
-  const result=await request('/api/story',{character:char,messages,campaign:game.campaign,intro:game.intro,lastLocation:scene});
+  const result=await request('/api/story',{character:char,messages,campaign:game.campaign,intro:game.intro,lastLocation:scene,previousAdventures:previousAdventures()});
   if(!result.text)throw Error('O Mestre não devolveu uma narrativa.');
   messages.push({role:'assistant',content:result.text,choices:Array.isArray(result.choices)?result.choices:[]});
   detailView=false;detailArtwork='';detailKey='';$('baseImage').hidden=true;
