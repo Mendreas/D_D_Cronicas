@@ -50,17 +50,43 @@ export default async function(request){
    ['detail',campaign,saveId,location,actionHash].join(':');
   const filePath=kind==='location_base'?['base',campaign,location,variant+'.jpg'].join('/'):
     ['detail',campaign,saveId,location,actionHash+'.jpg'].join('/');
-  const params=new URLSearchParams({select:'storage_path',scope:'eq.'+kind,campaign_id:'eq.'+campaign,location_id:'eq.'+location,limit:'1'});
+  const params=new URLSearchParams({select:'storage_path,updated_at',scope:'eq.'+kind,campaign_id:'eq.'+campaign,location_id:'eq.'+location,limit:'1'});
   if(kind==='action_detail'){
     params.set('save_id','eq.'+saveId);params.set('action_hash','eq.'+actionHash);
   }else params.set('variant','eq.'+variant);
   const publicUrl=path=>url+'/storage/v1/object/public/'+BUCKET+'/'+path.split('/').map(encodeURIComponent).join('/');
   async function find(){
     const rows=await api('/rest/v1/game_scene_images?'+params.toString());
-    return rows?.[0]?.storage_path||'';
+    return rows?.[0]||null;
   }
   const existing=await find();
-  if(existing)return reply({status:'ready',url:publicUrl(existing),cached:true,kind,location,variant});
+  const versionedUrl=row=>publicUrl(row.storage_path)+(row.updated_at?'?v='+encodeURIComponent(row.updated_at):'');
+  if(existing&&data.mode!=='replace')return reply({status:'ready',url:versionedUrl(existing),cached:true,kind,location,variant});
+  if(data.mode==='replace'){
+    if(kind!=='location_base')return reply({error:'Só é possível substituir imagens base'},400);
+    if(!existing)return reply({error:'Imagem base ainda não existe; usa a importação normal'},404);
+    const encoded=String(data.image_data||'');
+    const match=/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(encoded);
+    if(!match||match[1].length>8_000_000)return reply({error:'JPEG inválido ou excessivamente grande'},400);
+    const bytes=Buffer.from(match[1],'base64');
+    if(bytes.length<100||bytes.length>6_000_000||bytes[0]!==0xff||bytes[1]!==0xd8||bytes[2]!==0xff)
+      return reply({error:'Ficheiro JPG inválido'},400);
+    // Nunca modificar as referências do catálogo: manter o mesmo storage_path da imagem anterior.
+    const uploaded=await fetch(url+'/storage/v1/object/'+BUCKET+'/'+existing.storage_path,{
+      method:'PUT',headers:{...auth,'Content-Type':'image/jpeg','x-upsert':'true'},
+      body:bytes,signal:AbortSignal.timeout(15000)
+    });
+    if(!uploaded.ok)return reply({error:'Storage: '+(await uploaded.text()).slice(0,350)},502);
+    const updated=await api('/rest/v1/game_scene_images?'+params.toString().replace('select=storage_path%2Cupdated_at&',''),{
+      method:'PATCH',
+      data:{updated_at:new Date().toISOString(),prompt:'imagem-premium-substituida-manualmente'},
+      headers:{'Content-Type':'application/json','Prefer':'return=representation'}
+    });
+    const row=updated?.[0];
+    if(!row)return reply({error:'Imagem substituída no Storage, mas falhou a atualização de metadados'},502);
+    return reply({status:'ready',url:publicUrl(existing.storage_path)+'?v='+encodeURIComponent(row.updated_at),
+      cached:false,replaced:true,kind,location,variant});
+  }
   if(data.mode==='lookup'){
     const locks=await api('/rest/v1/game_scene_generation_locks?cache_key=eq.'+
       encodeURIComponent(cacheKey)+'&status=eq.generating&select=updated_at&limit=1');
@@ -75,7 +101,7 @@ export default async function(request){
   claimedKey=cacheKey;
   // Corrige corrida no intervalo consulta/reserva.
   const afterLock=await find();
-  if(afterLock)return reply({status:'ready',url:publicUrl(afterLock),cached:true,kind,location});
+  if(afterLock)return reply({status:'ready',url:versionedUrl(afterLock),cached:true,kind,location,variant});
   const char=JSON.stringify(data.character||{}).slice(0,1600);
   const prompt=kind==='location_base'?
     'Imagem BASE permanente de local para aventura de fantasia heróica. O LOCAL: '+location+
