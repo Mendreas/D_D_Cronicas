@@ -102,8 +102,12 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 import {abilityCheck,proficiencyBonus,modifier,SKILLS_2024,skillBonus,savingThrowBonus,classHitDie,spellAbility,rollDice,initialSavingThrows} from '/rules-2024.mjs';
 import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
 import {renderCampaignMap} from '/mapas.mjs';
+import {restorePlayerState,queuePlayerSync} from '/cloud-sync.mjs';
+const cloudBoot=await restorePlayerState().catch(e=>{console.warn('O progresso continua neste dispositivo:',e.message);return false});
 import {advanceMember,mergeParty,readParty,saveParty} from '/progression.mjs';
 const $=id=>document.getElementById(id);
+// Ao entrar noutro dispositivo, a ficha e os saves da conta são recuperados
+// antes da leitura do progresso local.
 const saveId=new URLSearchParams(location.search).get('save');
 const saveKey=saveId?'cv-save-'+saveId:null;
 let game=saveKey?JSON.parse(localStorage.getItem(saveKey)||'null'):null;
@@ -249,6 +253,7 @@ function showCharacterValidation(){
 function saveGame(announce=false){
  game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.travelHistory=travelHistory.slice(-120);game.locationVisits=locationVisits;game.updated=Date.now();
  localStorage.setItem(saveKey,JSON.stringify(game));
+ queuePlayerSync();
  const profileId=game.characterId||char.id;
  if(profileId){
   const pkey='cv-character-'+profileId;
@@ -266,6 +271,7 @@ function saveGame(announce=false){
   }
  }
  if(profileId)saveParty(profileId,mergeParty(char.companheiros));
+ queuePlayerSync();
  if(announce)setNotice('Aventura guardada neste navegador.');
 }
 function render(){
