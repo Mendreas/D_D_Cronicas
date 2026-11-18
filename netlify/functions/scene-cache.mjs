@@ -1,3 +1,4 @@
+import {requireGameUser,gameAuthError} from './_game-auth.mjs';
 // Netlify: cache persistente de ilustrações solo no Supabase.
 // Nunca devolve chaves privadas ao browser. Bucket scene-images é público
 // (incluindo imagens das ações): não usar para conteúdo confidencial.
@@ -13,8 +14,7 @@ async function sha(input){
 }
 export default async function(request){
  if(request.method!=='POST')return reply({error:'Método inválido'},405);
- const pass=process.env.GAME_ACCESS_CODE;
- if(!pass||request.headers.get('x-game-code')!==pass)return reply({error:'Código de acesso inválido'},401);
+ try{await requireGameUser(request)}catch(e){return gameAuthError(e)}
  const url=(process.env.SUPABASE_URL||'').trim().replace(/\/$/,'');
  const secret=(process.env.SUPABASE_SECRET_KEY||'').trim();
  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!secret)
