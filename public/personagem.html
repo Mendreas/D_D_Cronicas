@@ -42,7 +42,7 @@ button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8
 import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
 import {initialSavingThrows} from '/rules-2024.mjs';
 const $=id=>document.getElementById(id);
-const params=new URLSearchParams(location.search),editId=params.get('editar');
+const params=new URLSearchParams(location.search),editId=params.get('editar'),returnSave=params.get('regressar');
 let existing=null;try{existing=editId?JSON.parse(localStorage.getItem('cv-character-'+editId)||'null'):null}catch{}
 if(editId&&!existing){$('notice').textContent='Ficha antiga indisponível neste navegador.';$('start').disabled=true}
 if(existing){
@@ -158,6 +158,6 @@ $('start').onclick=()=>{
  let ids=[];try{ids=JSON.parse(localStorage.getItem('cv-character-index')||'[]')}catch{}
  if(!ids.includes(id))ids.unshift(id);
  localStorage.setItem('cv-character-index',JSON.stringify(ids));localStorage.setItem('cv-active-character',id);
- location.href=editId?'/personagens.html':'/campanhas.html?personagem='+encodeURIComponent(id);
+ location.href=editId?(returnSave?'/solo.html?save='+encodeURIComponent(returnSave):'/personagens.html'):'/campanhas.html?personagem='+encodeURIComponent(id);
 };
 </script></body></html>
