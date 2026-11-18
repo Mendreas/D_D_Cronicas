@@ -17,7 +17,7 @@ create unique index if not exists game_scene_images_unique_base_variant
 -- com a mesma variante. Se ambas existirem, preservar ambas para análise.
 update public.game_scene_images i
 set location_id='blackwood-ruinas'
-where i.campaign_id='veu'
+where i.campaign_id='veu' and i.scope='location_base'
   and i.location_id='ruinas-torre-blackwood'
   and not exists(
     select 1 from public.game_scene_images j
