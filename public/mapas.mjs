@@ -68,7 +68,7 @@ function interiorBackdrop(svg,campaign){
  addText(svg,'text','PLANTA DE EXPLORAÇÃO',{x:550,y:54,'text-anchor':'middle',fill:'#ead6ae','font-family':'Georgia,serif','font-size':29,'letter-spacing':4});
  addText(svg,'text','Esquema dos espaços conhecidos, sem escala',{x:550,y:687,'text-anchor':'middle',fill:'#b7bea9','font-family':'Georgia,serif','font-size':17});
 }
-function drawMap(svg,config,campaign,mode,current,known,details,showUnknown){
+function drawMap(svg,config,campaign,mode,current,known,history,details,showUnknown){
  const items=mode==='interior'?config.interiors:config.outdoors;
  const paths=mode==='interior'?config.passage:config.roads;
  const locMap=new Map(items.map(x=>[x.id,x]));
@@ -81,6 +81,16 @@ function drawMap(svg,config,campaign,mode,current,known,details,showUnknown){
    fill:'none',stroke:mode==='interior'?'#bdad87':'#65563d','stroke-width':knownBoth?5:3,
    'stroke-linecap':'round','stroke-dasharray':knownBoth?'9 10':'4 16',opacity:knownBoth?.95:.3});
   svg.append(path);
+ }
+ // Percurso efetivo da equipa, obtido do histórico de deslocações do save.
+ // Uma mudança de mapa interrompe a linha, evitando saltos inventados.
+ const trace=Array.isArray(history)?history:[];
+ for(let i=1;i<trace.length;i++){
+  const a=locMap.get(trace[i-1]),b=locMap.get(trace[i]);
+  if(!a||!b||a.id===b.id)continue;
+  const travelled=sEl('path',{d:`M${a.x} ${a.y} L${b.x} ${b.y}`,
+   fill:'none',stroke:'#e3ac58','stroke-width':8,'stroke-linecap':'round',opacity:'.85'});
+  svg.append(travelled);
  }
  for(const loc of items){
   const seen=known.has(loc.id)||loc.id===current;
@@ -105,7 +115,7 @@ function drawMap(svg,config,campaign,mode,current,known,details,showUnknown){
   svg.append(g);
  }
 }
-export function renderCampaignMap(target,{campaignId,currentLocation='',visited=[],mode='auto'}={}){
+export function renderCampaignMap(target,{campaignId,currentLocation='',visited=[],history=[],mode='auto'}={}){
  const campaign=locations[campaignId]||locations.veu;
  target.replaceChildren();
  const known=new Set([...(visited||[]),currentLocation].filter(Boolean));
@@ -122,13 +132,13 @@ export function renderCampaignMap(target,{campaignId,currentLocation='',visited=
  const svg=sEl('svg',{viewBox:'0 0 1100 720',role:'img','aria-label':'Mapa de '+campaign.title});
  frame.append(svg);
  const legend=document.createElement('div');legend.className='cv-map-legend';
- legend.textContent='◆ Posição atual    ✓ Visitado    ? Não descoberto    ··· Ligações esquemáticas';
+ legend.textContent='◆ Posição atual    ✓ Visitado    ? Não descoberto    Dourado: percurso realizado    ··· Ligações possíveis';
  const intro=document.createElement('p');intro.className='helper';
  intro.textContent='Posições ilustrativas, não representam distâncias ou rotas exatas. O mapa muda quando a aventura regista uma nova localização.';
  wrapper.append(tools,frame,legend,notice,intro);target.append(wrapper);
  function paint(){
   svg.replaceChildren();
-  drawMap(svg,campaign,campaignId,activeMode,currentLocation,known,notice,showUnknown);
+  drawMap(svg,campaign,campaignId,activeMode,currentLocation,known,history,notice,showUnknown);
   overview.setAttribute('aria-pressed',String(activeMode==='global'));
   rooms.setAttribute('aria-pressed',String(activeMode==='interior'));
   const shown=activeMode==='global'?campaign.outdoors:campaign.interiors;
