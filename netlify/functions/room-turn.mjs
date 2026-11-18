@@ -1,3 +1,4 @@
+import {requireGameUser,gameAuthError} from './_game-auth.mjs';
 // Resolve exatamente um turno após todos os participantes confirmarem a sua ação.
 const respond=(obj,status=200)=>Response.json(obj,{status,headers:{'Cache-Control':'no-store'}});
 export default async function(request){
@@ -7,8 +8,7 @@ export default async function(request){
  const secret=process.env.SUPABASE_SECRET_KEY;
  const ai=process.env.OPENAI_API_KEY;
  if(!url||!key||!secret||!ai)return respond({error:'Faltam variáveis no Netlify.'},503);
- if(request.headers.get('x-game-code')!==process.env.GAME_ACCESS_CODE || !process.env.GAME_ACCESS_CODE)
-   return respond({error:'Código de acesso do jogo inválido.'},401);
+ try{await requireGameUser(request)}catch(e){return gameAuthError(e)}
  const token=(request.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
  if(!token)return respond({error:'Inicia sessão primeiro.'},401);
  let roomId=null,turnNo=null,claimed=false;

@@ -2,7 +2,11 @@
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:linear-gradient(130deg,#111723,#293449);color:#f5ebdc;font:15px/1.6 system-ui;min-height:100vh}main{max-width:1120px;margin:auto;padding:24px}h1,h2{font-family:Georgia,serif;color:#ebc386}h1{font-size:38px} .chosen{padding:12px 18px;background:#28354a;border:1px solid #536681;border-radius:9px;margin:18px 0} .art{width:90px;height:90px;object-fit:cover;border-radius:10px;border:1px solid #586780;display:block}a{color:#eed09d}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.card{padding:23px;background:#1b2431;border:1px solid #46566b;border-radius:14px;display:flex;flex-direction:column}.card p{color:#b9c9d8;flex:1}button{padding:12px;border:1px solid #b99051;border-radius:8px;background:#b99051;color:#161b22;font-weight:700;cursor:pointer}small{color:#b8c9d6}@media(max-width:720px){.grid{grid-template-columns:1fr}}</style></head>
 <body><main><a href="/">← Página inicial</a><h1>Escolher uma aventura</h1><p>Estas três campanhas são originais. Cada uma oferece locais, desafios e personagens diferentes. A edição de referência é SRD 5.2.1 (2024).</p>
 <div id="chosen" class="chosen"></div><div class="grid" id="campaigns"></div><p><small>As campanhas oficiais comerciais não são reproduzidas sem autorização. Conteúdos SRD licenciados terão atribuição própria.</small></p></main>
-<script>
+<script type="module">
+import {mergeParty,readParty,saveParty} from '/progression.mjs';
+import {requireLogin} from '/auth-client.mjs';
+import {restorePlayerState,syncPlayerState} from '/cloud-sync.mjs';
+if(await requireLogin()){try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}}
 const selectedId=new URLSearchParams(location.search).get('personagem')||localStorage.getItem('cv-active-character');
 const character=selectedId?JSON.parse(localStorage.getItem('cv-character-'+selectedId)||'null'):null;
 if(!character){location.replace('/personagens.html')}
@@ -12,20 +16,29 @@ const campaigns=[
 {id:'farol',image:'/assets/farol.png',name:'O Farol de Cinzabruma',icon:'🌊',level:'Níveis 1–4',desc:'Um farol deixou de emitir luz. Barcos desaparecem e uma sociedade secreta vigia o porto.',intro:'Começa no porto de Cinzabruma numa noite chuvosa, junto ao cais e ao farol apagado.'},
 {id:'estrelas',image:'/assets/estrelas.png',name:'As Chaves das Estrelas',icon:'✨',level:'Níveis 3–8',desc:'Um observatório abandonado conserva mapas de um céu que já não existe. O grupo segue uma constelação impossível.',intro:'Começa perante o observatório de Serath, num planalto sob duas luas, e as suas cúpulas de cristal quebradas.'}
 ];localStorage.setItem('cv-campaign-catalog',JSON.stringify(campaigns));
-const root=document.getElementById('campaigns');for(const c of campaigns){const div=document.createElement('div');div.className='card';const ic=document.createElement('img');ic.className='art';ic.src=c.image||'';ic.alt='Ilustração da campanha '+c.name;ic.loading='lazy';ic.onerror=()=>{ic.src='/assets/realista-veu.svg';};const h=document.createElement('h2');h.textContent=c.name;const lv=document.createElement('small');lv.textContent=c.level;const p=document.createElement('p');p.textContent=c.desc;const b=document.createElement('button');b.textContent='Escolher esta campanha';b.onclick=()=>{
+const root=document.getElementById('campaigns');for(const c of campaigns){const div=document.createElement('div');div.className='card';const ic=document.createElement('img');ic.className='art';ic.src=c.image||'';ic.alt='Ilustração da campanha '+c.name;ic.loading='lazy';ic.onerror=()=>{ic.src='/assets/realista-veu.svg';};const h=document.createElement('h2');h.textContent=c.name;const lv=document.createElement('small');lv.textContent=c.level;const p=document.createElement('p');p.textContent=c.desc;const b=document.createElement('button');b.textContent='Escolher esta campanha';b.onclick=async()=>{
  if(!character)return location.href='/personagens.html';
  const saveId=crypto.randomUUID();
- const allies=[
- {nome:'Kael',classe:'Guerreiro',papel:'Proteção e combate',nivel:1,pv:12},
- {nome:'Lyra',classe:'Clériga',papel:'Cura e conhecimento',nivel:1,pv:10},
- {nome:'Neris',classe:'Ladina',papel:'Exploração e armadilhas',nivel:1,pv:9}
- ];
+ // A mesma personagem e os mesmos aliados acompanham todas as campanhas.
+ // Compatibilidade com gravações anteriores: reutilizar a melhor progressão
+ // conhecida em vez de começar sempre com companheiros de nível 1.
+ const saveIds=JSON.parse(localStorage.getItem('cv-save-index')||'[]');
+ let previousParty=readParty(selectedId);
+ if(!previousParty){
+   const prior=saveIds.map(id=>{
+     try{return JSON.parse(localStorage.getItem('cv-save-'+id)||'null')}catch{return null}
+   }).filter(s=>(s?.characterId===selectedId||s?.character?.id===selectedId)&&Array.isArray(s.character?.companheiros));
+   if(prior.length)previousParty=prior.sort((a,b)=>(b.updated||0)-(a.updated||0))[0].character.companheiros;
+ }
+ const allies=mergeParty(previousParty);
+ saveParty(selectedId,allies);
  const ccopy={...character,companheiros:allies};
  const save={character:ccopy,characterId:selectedId,campaign:c.name,campaignId:c.id,intro:c.intro,
    messages:[],locations:{},currentLocation:'',updated:Date.now()};
  localStorage.setItem('cv-save-'+saveId,JSON.stringify(save));
  const saves=JSON.parse(localStorage.getItem('cv-save-index')||'[]');saves.unshift(saveId);
  localStorage.setItem('cv-save-index',JSON.stringify(saves));
+ try{await syncPlayerState()}catch(e){console.warn('Campanha guardada neste dispositivo:',e.message)}
  location.href='/solo.html?save='+encodeURIComponent(saveId);
 };div.append(ic,h,lv,p,b);root.append(div)}
 </script></body></html>

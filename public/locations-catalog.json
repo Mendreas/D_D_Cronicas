@@ -1,0 +1,237 @@
+{
+  "veu": [
+    {
+      "id": "aldeia-blackwood",
+      "name": "Aldeia de Blackwood",
+      "aliases": [
+        "vila-blackwood",
+        "blackwood-aldeia",
+        "aldeia-proxima",
+        "mercado-blackwood"
+      ]
+    },
+    {
+      "id": "trilha-sombria",
+      "name": "Trilha Sombria",
+      "aliases": [
+        "floresta-blackwood",
+        "trilha-sombreada-floresta",
+        "caminho-blackwood",
+        "trilho-floresta"
+      ]
+    },
+    {
+      "id": "circulo-pedras",
+      "name": "Círculo de Pedras",
+      "aliases": [
+        "circulo-ritual-floresta",
+        "clareira-dos-menires",
+        "clareira-sagrada"
+      ]
+    },
+    {
+      "id": "blackwood-ruinas",
+      "name": "Ruínas de Blackwood",
+      "aliases": [
+        "ruinas-torre-blackwood",
+        "blackwood-ruinas-torre-exterior",
+        "ruinas-blackwood",
+        "torre-blackwood",
+        "torre-abandonada"
+      ]
+    },
+    {
+      "id": "sala-ruinas",
+      "name": "Salão das Ruínas",
+      "aliases": [
+        "interior-torre",
+        "sala-da-torre",
+        "ruinas-sala",
+        "corredor-estreito-ruinas"
+      ]
+    },
+    {
+      "id": "escadaria-torre",
+      "name": "Escadaria da Torre",
+      "aliases": [
+        "escadas-torre",
+        "escadaria-espiral",
+        "escadaria-antiga"
+      ]
+    },
+    {
+      "id": "cripta-subterranea",
+      "name": "Cripta Subterrânea",
+      "aliases": [
+        "cripta-blackwood",
+        "cripta-antiga",
+        "camara-funeraria"
+      ]
+    },
+    {
+      "id": "camara-ritual",
+      "name": "Câmara do Artefacto",
+      "aliases": [
+        "camara-do-artefacto",
+        "sala-do-artefacto",
+        "sala-ritual",
+        "camara-magica"
+      ]
+    }
+  ],
+  "farol": [
+    {
+      "id": "porto-cinzabruma",
+      "name": "Porto de Cinzabruma",
+      "aliases": [
+        "porto-nebuloso",
+        "porto-tempestade",
+        "cais-cinzabruma",
+        "porto"
+      ]
+    },
+    {
+      "id": "vila-cinzabruma",
+      "name": "Vila de Cinzabruma",
+      "aliases": [
+        "aldeia-cinzabruma",
+        "vila-costeira",
+        "mercado-cinzabruma"
+      ]
+    },
+    {
+      "id": "falesia-tempestuosa",
+      "name": "Falésia Tempestuosa",
+      "aliases": [
+        "falesias-abaixo-do-farol",
+        "falesias-do-norte",
+        "falesia",
+        "falesias"
+      ]
+    },
+    {
+      "id": "exterior-farol",
+      "name": "Exterior do Farol",
+      "aliases": [
+        "farol-exterior-tempestade",
+        "farol-exterior",
+        "farol-cinzabruma",
+        "base-do-farol"
+      ]
+    },
+    {
+      "id": "interior-farol",
+      "name": "Interior do Farol",
+      "aliases": [
+        "farol-interior",
+        "escadaria-farol",
+        "salas-farol"
+      ]
+    },
+    {
+      "id": "tunel-contrabandistas",
+      "name": "Túnel dos Contrabandistas",
+      "aliases": [
+        "tunel-contrabando",
+        "passagem-secreta-farol",
+        "tunel-subterraneo"
+      ]
+    },
+    {
+      "id": "sala-da-lanterna",
+      "name": "Sala da Lanterna",
+      "aliases": [
+        "topo-do-farol",
+        "lanterna-farol",
+        "sala-luz",
+        "cume-farol"
+      ]
+    },
+    {
+      "id": "gruta-oculta",
+      "name": "Gruta Oculta",
+      "aliases": [
+        "gruta-marinha",
+        "gruta-da-tempestade",
+        "caverna-tempestade",
+        "gruta-secreta"
+      ]
+    }
+  ],
+  "estrelas": [
+    {
+      "id": "observatorio-exterior",
+      "name": "Observatório de Serath",
+      "aliases": [
+        "observatorio-serath",
+        "observatorio-exterior-noturno",
+        "exterior-observatorio",
+        "observatorio"
+      ]
+    },
+    {
+      "id": "observatorio-cupula",
+      "name": "Cúpula do Observatório",
+      "aliases": [
+        "cupula-principal",
+        "observatorio-cupula-principal",
+        "cupula-cristal"
+      ]
+    },
+    {
+      "id": "sala-dos-mapas",
+      "name": "Sala dos Mapas",
+      "aliases": [
+        "sala-celeste-principal",
+        "cartografia-astral",
+        "sala-mapas"
+      ]
+    },
+    {
+      "id": "corredor-celeste",
+      "name": "Corredor Celeste",
+      "aliases": [
+        "passagem-das-ruinas",
+        "corredor-astral",
+        "corredor-observatorio"
+      ]
+    },
+    {
+      "id": "camara-astral",
+      "name": "Câmara Astral",
+      "aliases": [
+        "cripta-estelar",
+        "camara-das-estrelas",
+        "santuario-astral"
+      ]
+    },
+    {
+      "id": "biblioteca-estelar",
+      "name": "Biblioteca Estelar",
+      "aliases": [
+        "biblioteca-astral",
+        "arquivo-astral",
+        "biblioteca-observatorio"
+      ]
+    },
+    {
+      "id": "jardim-constelacao",
+      "name": "Jardim das Constelações",
+      "aliases": [
+        "jardim-estelar",
+        "terraco-das-constelacoes",
+        "jardim-observatorio"
+      ]
+    },
+    {
+      "id": "portal-estelar",
+      "name": "Portal das Estrelas",
+      "aliases": [
+        "portal-das-estrelas",
+        "santuario-das-chaves",
+        "portal-astral",
+        "camara-portal"
+      ]
+    }
+  ]
+}

@@ -2,7 +2,12 @@
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#27344a,#101722);color:#f4ecdc;font:16px/1.6 system-ui;min-height:100vh}main{max-width:1030px;margin:auto;padding:28px}h1,h2{font-family:Georgia,serif;color:#e9c287}h1{font-size:40px}a{color:#edce95}.panel{background:#1c2635;border:1px solid #435771;border-radius:13px;padding:23px;margin:18px 0}button,.button{border:1px solid #c29b5b;border-radius:8px;background:#b99050;color:#151922;padding:11px 18px;cursor:pointer;font-weight:700;text-decoration:none;display:inline-block}.outline{background:transparent;color:#e9ca92}.characters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.character{padding:20px;border:1px solid #4b5c71;border-radius:12px;background:#1b2431}.character p{color:#bfcfe0}.row{display:flex;gap:10px;flex-wrap:wrap}small{color:#b5c6d7}@media(max-width:680px){.characters{grid-template-columns:1fr}}</style></head>
 <body><main><a href="/">← Página inicial</a><h1>As tuas personagens</h1><p>Cria uma personagem uma única vez. Depois podes levá-la para diferentes campanhas, conservando a ficha e a progressão.</p>
 <div class="panel"><a class="button" href="/personagem.html">+ Criar nova personagem</a></div><div class="characters" id="characters"></div><p><small>As personagens estão guardadas neste navegador nesta versão de testes; a sincronização entre PC e iPad ainda será implementada.</small></p></main>
-<script>
+<script type="module">
+import {requireLogin} from '/auth-client.mjs';
+import {restorePlayerState} from '/cloud-sync.mjs';
+if(await requireLogin()){
+ try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}
+}
 const root=document.getElementById('characters');
 const ids=JSON.parse(localStorage.getItem('cv-character-index')||'[]');
 const legacySaves=JSON.parse(localStorage.getItem('cv-save-index')||'[]');

@@ -21,7 +21,7 @@ a{color:var(--gold)}header{min-height:75px;border-bottom:1px solid #3c4b5e;backg
 .speaker{font:700 12px system-ui;color:var(--gold);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px}
 #artBox{height:min(61vh,650px);min-height:370px;display:flex;align-items:center;justify-content:center;background:#101b2a;overflow:hidden}
 #artBox img{width:100%;height:100%;object-fit:cover}.placeholder{padding:25px;text-align:center;color:var(--muted);max-width:350px;line-height:1.8}
-.action-panel{padding:17px 18px;margin-top:17px}.action-panel label{display:block;margin-bottom:8px;color:var(--gold);font-weight:650}
+.image-toolbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:12px;border-top:1px solid #37465b}.image-toolbar button{font-size:12px}.action-panel{padding:17px 18px;margin-top:17px}.action-panel label{display:block;margin-bottom:8px;color:var(--gold);font-weight:650}
 .choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 15px}
 .choice{min-height:63px;background:#26374a;border:1px solid #5a718b;color:#f6e9d6;text-align:left;line-height:1.4;padding:13px;display:flex;align-items:center;gap:10px;font-weight:500}
 .choice:hover:not(:disabled){background:#344963;border-color:#d6b577}
@@ -44,57 +44,216 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 .local-map{height:235px;border:1px dashed #718199;border-radius:13px;position:relative;background:radial-gradient(circle at center,#31445a,#121e2d 74%);display:grid;place-items:center;text-align:center}
 .local-map::before,.local-map::after{content:'?';position:absolute;color:#aabed3;font-size:23px;top:19%;left:20%}.local-map::after{top:67%;left:75%}
 .local-map span{background:#b69053;color:#121721;border-radius:15px;padding:16px 20px;font-weight:bold;max-width:70%}
+.modal:has(.cv-map-ui){width:min(1140px,100%)}
+.cv-map-ui{display:flex;flex-direction:column;gap:11px}
+.cv-map-tools{display:flex;flex-wrap:wrap;gap:8px}
+.cv-map-tools button{padding:9px 13px;font-size:12px}
+.cv-map-tools button[aria-pressed="true"]{background:#b88d4c;color:#101922}
+.cv-map-frame{border:1px solid #5b6a76;border-radius:12px;overflow:hidden;background:#1a2633}
+.cv-map-frame svg{display:block;width:100%;height:auto;aspect-ratio:1100/720}
+.cv-map-frame svg g[role="button"]:focus{outline:none;filter:drop-shadow(0 0 9px #f4cb7b)}
+.cv-map-legend{font-size:12px;color:#e5cf9c;white-space:pre-wrap}
+.cv-map-status{font-size:13px;color:#c8d4de;margin:0}
+@keyframes map-pulse{50%{opacity:.5;r:38}}
+.map-pulse{animation:map-pulse 2.5s ease-in-out infinite}
+.modal:has(.sheet-summary){width:min(1050px,100%)}
+.modal:has(.dice-options){width:min(650px,100%)}
+.sheet-subtitle{color:#e9c58c;font-size:14px}
+.sheet-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sheet-edit-grid,.sheet-skill-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sheet-input{display:flex;flex-direction:column;gap:6px;color:#c4d4dd;font-size:13px}
+.sheet-input input{width:100%}
+.sheet-check{display:flex;align-items:center;gap:10px;padding:9px;border:1px solid #405369;border-radius:8px;background:#142236;font-size:13px;cursor:pointer}
+.sheet-check input{width:17px;height:17px;flex-shrink:0;accent-color:#c5a161}
+.sheet-check span{flex:1}.sheet-check strong{color:#e7c58c;font-size:15px}
+.modal h3{font:700 18px Georgia,serif;color:#edc98a;margin:19px 0 10px}
+.dice-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.dice-options label{display:flex;flex-direction:column;gap:6px;color:#e2c69b}
+.dice-options select,.dice-options input{width:100%}
+.dice-result{font:700 23px Georgia,serif;color:#f3d396;min-height:42px;margin:15px 0;overflow-wrap:anywhere}
+.dice-history p{font-size:12px;color:#c4d2e0;margin:5px 0}
+@media(max-width:650px){.sheet-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.sheet-edit-grid,.sheet-skill-grid{grid-template-columns:1fr}.dice-options{grid-template-columns:1fr 1fr}}
 [hidden]{display:none!important}
 @media(max-width:790px){header{align-items:flex-start}.panels{grid-template-columns:1fr}#chat{height:48vh;min-height:300px}#artBox{height:290px;min-height:290px}.action-row{flex-direction:column}.action-row button{min-height:45px}.stats{grid-template-columns:repeat(2,1fr)}}
 </style></head>
 <body>
 <header><div class="brand">✦ Crónicas do Véu</div>
-<nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa-local">Mapa local</button><button class="secondary" data-view="mapa-geral">Mapa geral</button><button id="saveBtn">Guardar</button></nav>
+<nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa">Mapa</button><button id="saveBtn">Guardar</button><button id="logoutBtn" class="secondary" title="Terminar sessão Supabase">Sair</button></nav>
 <div id="campaignTitle">Aventura solo</div></header>
 <main>
-<div id="accessBar" class="access" hidden>
-<label for="access">Código de acesso ao jogo:</label><input type="password" id="access" autocomplete="off" placeholder="Código privado configurado no Netlify">
-<button id="accessSave">Entrar na aventura</button>
-</div>
+<div id="characterValidation" class="access" hidden><span>A ficha desta personagem é anterior à validação SRD 5.2.1. Tens de rever as escolhas de perícias antes de continuar.</span> <a id="validateCharacter" href="/personagens.html">Rever ficha agora</a></div>
+<div id="accessBar" class="access" hidden><span>Para jogar, inicia sessão na tua conta Supabase.</span> <a href="/login.html">Entrar</a></div>
 <div class="bar"><h1 id="sceneTitle">A tua aventura</h1><small id="partyStatus">A preparar o grupo...</small></div>
 <div class="panels">
 <section class="panel" aria-label="Narrativa do Mestre de Jogo"><div class="panel-head">O Mestre de Jogo <span id="chapterIndicator" style="font:12px system-ui;color:#bdcad9">Capítulo I</span></div>
 <div id="chat" aria-live="polite"></div></section>
 <section class="panel" aria-label="Ilustração do local"><div class="panel-head"><span id="locationTitle">Local atual</span><span class="helper">Imagem do cenário</span></div>
-<div id="artBox"><div class="placeholder">O cenário será ilustrado automaticamente quando o Mestre apresentar o local.</div></div></section>
+<div id="artBox"><div class="placeholder">O cenário será ilustrado automaticamente quando o Mestre apresentar o local.</div></div><div class="image-toolbar"><button id="actionImage" class="secondary" disabled>Ver imagem detalhada da ação</button><button id="baseImage" class="secondary" hidden>Voltar à imagem do local</button></div></section>
 </div>
 <section class="panel action-panel"><label for="action">O que fazes a seguir?</label>
 <div id="choices" class="choices" aria-label="Escolhas sugeridas pelo Mestre de Jogo" hidden></div>
 <div class="action-row"><textarea id="action" placeholder="Descreve a tua ação: examino a porta, pergunto a Kael, lanço um feitiço..."></textarea>
 <button id="send" disabled>Enviar ação</button></div>
-<div class="bar" style="margin:12px 0 0"><span class="helper">Ctrl + Enter para enviar · A aventura guarda-se automaticamente após cada cena.</span><div class="nav"><button id="roll" class="secondary">🎲 d20</button><span id="dice" class="helper"></span><button id="retryStart" class="secondary" hidden>Tentar iniciar novamente</button><button id="retryImage" class="secondary" hidden>Tentar imagem novamente</button></div></div>
+<div class="bar" style="margin:12px 0 0"><span class="helper">Ctrl + Enter para enviar · A aventura guarda-se automaticamente após cada cena.</span><div class="nav"><button id="roll" class="secondary">🎲 Dados</button><span id="dice" class="helper"></span><button id="retryStart" class="secondary" hidden>Tentar iniciar novamente</button><button id="retryImage" class="secondary" hidden>Tentar imagem novamente</button></div></div>
 <div id="notice" role="status"></div></section>
 </main>
 <div id="modalBackdrop" class="modal-backdrop" hidden role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button class="secondary" id="modalClose">Fechar ✕</button></div><div id="modalBody"></div></div></div>
 <script type="module">
-import {abilityCheck,proficiencyBonus,modifier} from '/rules-2024.mjs';
+import {abilityCheck,proficiencyBonus,modifier,SKILLS_2024,skillBonus,savingThrowBonus,classHitDie,spellAbility,rollDice,initialSavingThrows} from '/rules-2024.mjs';
+import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
+import {renderCampaignMap} from '/mapas.mjs';
+import {restorePlayerState,queuePlayerSync} from '/cloud-sync.mjs';
+const cloudBoot=await restorePlayerState().catch(e=>{console.warn('O progresso continua neste dispositivo:',e.message);return false});
+import {advanceMember,mergeParty,readParty,saveParty} from '/progression.mjs';
 const $=id=>document.getElementById(id);
+// Ao entrar noutro dispositivo, a ficha e os saves da conta são recuperados
+// antes da leitura do progresso local.
 const saveId=new URLSearchParams(location.search).get('save');
 const saveKey=saveId?'cv-save-'+saveId:null;
 let game=saveKey?JSON.parse(localStorage.getItem(saveKey)||'null'):null;
 let messages=game?.messages||[];
 let scene=game?.currentLocation||'';
+const oldSceneAtLoad=scene;
+const locationAliases={"veu|aldeia-blackwood":"aldeia-blackwood","veu|vila-blackwood":"aldeia-blackwood","veu|blackwood-aldeia":"aldeia-blackwood","veu|aldeia-proxima":"aldeia-blackwood","veu|mercado-blackwood":"aldeia-blackwood","veu|trilha-sombria":"trilha-sombria","veu|floresta-blackwood":"trilha-sombria","veu|trilha-sombreada-floresta":"trilha-sombria","veu|caminho-blackwood":"trilha-sombria","veu|trilho-floresta":"trilha-sombria","veu|circulo-pedras":"circulo-pedras","veu|circulo-ritual-floresta":"circulo-pedras","veu|clareira-dos-menires":"circulo-pedras","veu|clareira-sagrada":"circulo-pedras","veu|blackwood-ruinas":"blackwood-ruinas","veu|ruinas-torre-blackwood":"blackwood-ruinas","veu|blackwood-ruinas-torre-exterior":"blackwood-ruinas","veu|ruinas-blackwood":"blackwood-ruinas","veu|torre-blackwood":"blackwood-ruinas","veu|torre-abandonada":"blackwood-ruinas","veu|sala-ruinas":"sala-ruinas","veu|interior-torre":"sala-ruinas","veu|sala-da-torre":"sala-ruinas","veu|ruinas-sala":"sala-ruinas","veu|corredor-estreito-ruinas":"sala-ruinas","veu|escadaria-torre":"escadaria-torre","veu|escadas-torre":"escadaria-torre","veu|escadaria-espiral":"escadaria-torre","veu|escadaria-antiga":"escadaria-torre","veu|cripta-subterranea":"cripta-subterranea","veu|cripta-blackwood":"cripta-subterranea","veu|cripta-antiga":"cripta-subterranea","veu|camara-funeraria":"cripta-subterranea","veu|camara-ritual":"camara-ritual","veu|camara-do-artefacto":"camara-ritual","veu|sala-do-artefacto":"camara-ritual","veu|sala-ritual":"camara-ritual","veu|camara-magica":"camara-ritual","farol|porto-cinzabruma":"porto-cinzabruma","farol|porto-nebuloso":"porto-cinzabruma","farol|porto-tempestade":"porto-cinzabruma","farol|cais-cinzabruma":"porto-cinzabruma","farol|porto":"porto-cinzabruma","farol|vila-cinzabruma":"vila-cinzabruma","farol|aldeia-cinzabruma":"vila-cinzabruma","farol|vila-costeira":"vila-cinzabruma","farol|mercado-cinzabruma":"vila-cinzabruma","farol|falesia-tempestuosa":"falesia-tempestuosa","farol|falesias-abaixo-do-farol":"falesia-tempestuosa","farol|falesias-do-norte":"falesia-tempestuosa","farol|falesia":"falesia-tempestuosa","farol|falesias":"falesia-tempestuosa","farol|exterior-farol":"exterior-farol","farol|farol-exterior-tempestade":"exterior-farol","farol|farol-exterior":"exterior-farol","farol|farol-cinzabruma":"exterior-farol","farol|base-do-farol":"exterior-farol","farol|interior-farol":"interior-farol","farol|farol-interior":"interior-farol","farol|escadaria-farol":"interior-farol","farol|salas-farol":"interior-farol","farol|tunel-contrabandistas":"tunel-contrabandistas","farol|tunel-contrabando":"tunel-contrabandistas","farol|passagem-secreta-farol":"tunel-contrabandistas","farol|tunel-subterraneo":"tunel-contrabandistas","farol|sala-da-lanterna":"sala-da-lanterna","farol|topo-do-farol":"sala-da-lanterna","farol|lanterna-farol":"sala-da-lanterna","farol|sala-luz":"sala-da-lanterna","farol|cume-farol":"sala-da-lanterna","farol|gruta-oculta":"gruta-oculta","farol|gruta-marinha":"gruta-oculta","farol|gruta-da-tempestade":"gruta-oculta","farol|caverna-tempestade":"gruta-oculta","farol|gruta-secreta":"gruta-oculta","estrelas|observatorio-exterior":"observatorio-exterior","estrelas|observatorio-serath":"observatorio-exterior","estrelas|observatorio-exterior-noturno":"observatorio-exterior","estrelas|exterior-observatorio":"observatorio-exterior","estrelas|observatorio":"observatorio-exterior","estrelas|observatorio-cupula":"observatorio-cupula","estrelas|cupula-principal":"observatorio-cupula","estrelas|observatorio-cupula-principal":"observatorio-cupula","estrelas|cupula-cristal":"observatorio-cupula","estrelas|sala-dos-mapas":"sala-dos-mapas","estrelas|sala-celeste-principal":"sala-dos-mapas","estrelas|cartografia-astral":"sala-dos-mapas","estrelas|sala-mapas":"sala-dos-mapas","estrelas|corredor-celeste":"corredor-celeste","estrelas|passagem-das-ruinas":"corredor-celeste","estrelas|corredor-astral":"corredor-celeste","estrelas|corredor-observatorio":"corredor-celeste","estrelas|camara-astral":"camara-astral","estrelas|cripta-estelar":"camara-astral","estrelas|camara-das-estrelas":"camara-astral","estrelas|santuario-astral":"camara-astral","estrelas|biblioteca-estelar":"biblioteca-estelar","estrelas|biblioteca-astral":"biblioteca-estelar","estrelas|arquivo-astral":"biblioteca-estelar","estrelas|biblioteca-observatorio":"biblioteca-estelar","estrelas|jardim-constelacao":"jardim-constelacao","estrelas|jardim-estelar":"jardim-constelacao","estrelas|terraco-das-constelacoes":"jardim-constelacao","estrelas|jardim-observatorio":"jardim-constelacao","estrelas|portal-estelar":"portal-estelar","estrelas|portal-das-estrelas":"portal-estelar","estrelas|santuario-das-chaves":"portal-estelar","estrelas|portal-astral":"portal-estelar","estrelas|camara-portal":"portal-estelar"};
+function canonicalLocation(x){const value=String(x||'').toLowerCase().replace(/_/g,'-');return locationAliases[(game?.campaignId||'')+'|'+value]||value}
+scene=canonicalLocation(scene);
+// Corrigir gravações antigas cujo prólogo descreve o grupo junto às ruínas
+// mas o identificador gerado tinha sido incorretamente o da aldeia.
+// Só alterar a primeira cena, antes de o jogador efetuar qualquer ação.
+const openingNarrative=messages.filter(m=>m.role==='assistant');
+const mislabelledOpening=game?.campaignId==='veu'&&scene==='aldeia-blackwood'
+ &&openingNarrative.length===1&&!messages.some(m=>m.role==='user'&&!m.internal)
+ &&/ru[ií]nas.{0,100}torre|torre.{0,100}ru[ií]nas/i.test(openingNarrative[0].content||'');
+if(mislabelledOpening)scene='blackwood-ruinas';
+// Reparar o último turno já guardado quando a narrativa chegou à entrada da torre,
+// mas o marcador LOCAL continuou incorretamente na aldeia.
+const lastNarratedScene=[...messages].reverse().find(m=>m.role==='assistant')?.content||'';
+const mislabelledReturn=game?.campaignId==='veu'&&scene==='aldeia-blackwood'
+ &&/(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\s+(?:de novo\s+)?(?:[àa]\s+|para\s+|junto\s+[àa]\s+|perto\s+d[aeo]\s+)?(?:entrada\s+d[aeo]\s+)?(?:torre|ru[ií]nas)|(?:[àa]\s+)?entrada\s+d[aeo]\s+torre/i.test(lastNarratedScene);
+if(mislabelledReturn)scene='blackwood-ruinas';
+// Recuperação conservadora de local em campanhas antigas quando o Mestre
+// descreveu explicitamente a chegada a outro cenário.
+const savedTransitions={
+ farol:[
+  ['sala-da-lanterna',/\b(?:chegas?|entras?|sobes?|atinges?)\b[^.!?]{0,80}\b(?:sala da lanterna|topo do farol)/i],
+  ['tunel-contrabandistas',/\b(?:entras?|desces?|avan[cç]as?|chegas?)\b[^.!?]{0,80}\b(?:t[uú]nel|passagem secreta)/i],
+  ['gruta-oculta',/\b(?:entras?|chegas?|avan[cç]as?)\b[^.!?]{0,80}\b(?:gruta|caverna)/i],
+  ['interior-farol',/\b(?:entras?|avan[cç]as?|sobes?)\b[^.!?]{0,80}\b(?:interior do farol|dentro do farol|escadaria do farol)/i],
+  ['exterior-farol',/\b(?:chegas?|regressas?|aproximas-te)\b[^.!?]{0,80}\b(?:entrada do farol|base do farol|exterior do farol)/i],
+  ['falesia-tempestuosa',/\b(?:chegas?|avan[cç]as?|atravessas?)\b[^.!?]{0,80}\b(?:fal[eé]sia|fal[eé]sias)/i],
+  ['vila-cinzabruma',/\b(?:chegas?|regressas?|entras?)\b[^.!?]{0,80}\b(?:vila|aldeia|mercado)/i],
+  ['porto-cinzabruma',/\b(?:chegas?|regressas?|entras?)\b[^.!?]{0,80}\b(?:porto|cais|docas)/i]
+ ],
+ estrelas:[
+  ['portal-estelar',/\b(?:entras?|atravessas?|chegas?)\b[^.!?]{0,80}\b(?:portal|santu[aá]rio das chaves)/i],
+  ['jardim-constelacao',/\b(?:entras?|chegas?|atravessas?)\b[^.!?]{0,80}\b(?:jardim|terra[cç]o das constela[cç][oõ]es)/i],
+  ['biblioteca-estelar',/\b(?:entras?|chegas?|avan[cç]as?)\b[^.!?]{0,80}\b(?:biblioteca|arquivo astral)/i],
+  ['camara-astral',/\b(?:entras?|chegas?|avan[cç]as?)\b[^.!?]{0,80}\b(?:c[aâ]mara astral|c[aâ]mara das estrelas)/i],
+  ['corredor-celeste',/\b(?:entras?|chegas?|atravessas?)\b[^.!?]{0,80}\b(?:corredor|passagem das ru[ií]nas)/i],
+  ['sala-dos-mapas',/\b(?:entras?|chegas?|avan[cç]as?)\b[^.!?]{0,80}\b(?:sala dos mapas|cartografia astral)/i],
+  ['observatorio-cupula',/\b(?:entras?|chegas?|sobes?)\b[^.!?]{0,80}\b(?:c[uú]pula|telesc[oó]pio principal)/i],
+  ['observatorio-exterior',/\b(?:chegas?|regressas?|aproximas-te)\b[^.!?]{0,80}\b(?:entrada do observat[oó]rio|exterior do observat[oó]rio|planalto)/i]
+ ],
+ veu:[
+  ['cripta-subterranea',/\b(?:entras?|desces?|chegas?|avan[cç]as?)\b[^.!?]{0,80}\b(?:cripta|c[aâ]mara funer[aá]ria)/i],
+  ['camara-ritual',/\b(?:entras?|chegas?|avan[cç]as?)\b[^.!?]{0,80}\b(?:c[aâ]mara do artefacto|c[aâ]mara ritual)/i],
+  ['escadaria-torre',/\b(?:desces?|sobes?|entras?|chegas?)\b[^.!?]{0,80}\b(?:escadaria|escadas|degraus)/i],
+  ['sala-ruinas',/\b(?:entras?|penetr[aá]s?|chegas?)\b[^.!?]{0,80}\b(?:interior da torre|sala da torre)/i],
+  ['blackwood-ruinas',/\b(?:chegas?|regressas?|voltas?|aproximas-te)\b[^.!?]{0,80}\b(?:ru[ií]nas|torre)/i],
+  ['aldeia-blackwood',/\b(?:chegas?|regressas?|voltas?|entras?)\b[^.!?]{0,80}\b(?:aldeia|vila|mercado)/i],
+  ['circulo-pedras',/\b(?:chegas?|entras?|avan[cç]as?)\b[^.!?]{0,80}\b(?:c[ií]rculo de pedras|menires)/i],
+  ['trilha-sombria',/\b(?:entras?|avan[cç]as?|segues?|chegas?)\b[^.!?]{0,80}\b(?:floresta|trilho|trilha)/i]
+ ]
+};
+const recoveredScene=lastNarratedScene.split(/(?<=[.!?])\s+|\n+/).reduce((latest,sentence)=>{
+ for(const [id,pattern] of(savedTransitions[game?.campaignId]||[])){
+  if(pattern.test(sentence))return id;
+ }
+ return latest;
+},'');
+const recoveredSavedScene=!!recoveredScene&&recoveredScene!==scene;
+if(recoveredSavedScene)scene=recoveredScene;
+const locationNames={
+ 'veu|aldeia-blackwood':'Aldeia de Blackwood',
+ 'veu|blackwood-ruinas':'Ruínas da Torre de Blackwood',
+ 'veu|trilha-sombria':'Trilha Sombria',
+ 'veu|sala-ruinas':'Interior da Torre',
+ 'veu|escadaria-torre':'Escadaria da Torre',
+ 'farol|porto-cinzabruma':'Porto de Cinzabruma',
+ 'farol|exterior-farol':'Exterior do Farol',
+ 'estrelas|observatorio-exterior':'Observatório de Serath'
+};
+let locationVisits=game?.locationVisits&&typeof game.locationVisits==='object'?game.locationVisits:{};
+if(scene&&!locationVisits[scene])locationVisits[scene]=1;
+let selectedVariant=()=>Number(locationVisits[scene]||1)%2===0?'b':'a';
 let artwork='',busy=false,artBusy=false,firstAttempted=false;
+let detailView=false,detailArtwork='',detailKey='';
 let visited=Array.isArray(game?.visitedLocations)?game.visitedLocations:[];
+let travelHistory=Array.isArray(game?.travelHistory)?game.travelHistory.slice(-120):[...visited];
+if(mislabelledOpening){
+ visited=visited.filter(v=>canonicalLocation(v)!=='aldeia-blackwood');
+ game.currentLocation=scene;
+}
+if(mislabelledReturn||recoveredSavedScene)game.currentLocation=scene;
 if(scene&&!visited.includes(scene))visited.push(scene);
+if(scene&&travelHistory.at(-1)!==scene)travelHistory.push(scene);
+// A ficha e os aliados partilham a progressão mesmo em saves antigos.
+const sharedProfileId=game?.characterId||game?.character?.id||'';
+let sharedProfile=null;
+try{sharedProfile=sharedProfileId?JSON.parse(localStorage.getItem('cv-character-'+sharedProfileId)||'null'):null}catch{}
+if(game?.character&&sharedProfileId&&!sharedProfile){
+ // Recuperar o perfil de saves antigos que ainda não possuíam ficha permanente.
+ const recovered={...game.character,id:sharedProfileId};
+ localStorage.setItem('cv-character-'+sharedProfileId,JSON.stringify(recovered));
+ let index=[];try{index=JSON.parse(localStorage.getItem('cv-character-index')||'[]')}catch{}
+ if(!index.includes(sharedProfileId)){index.unshift(sharedProfileId);localStorage.setItem('cv-character-index',JSON.stringify(index))}
+ sharedProfile=recovered;
+}
+if(game?.character&&sharedProfile){
+ const localHero=game.character;
+ const newerGlobal=(Number(sharedProfile.experiencia)||0)>(Number(localHero.experiencia)||0)
+    ||Number(sharedProfile.nivel||1)>Number(localHero.nivel||1);
+ if(newerGlobal)
+  game.character={...localHero,...sharedProfile,companheiros:localHero.companheiros||[]};
+ // A revisão formal da criação prevalece sobre perícias/atributos copiados
+ // de um save antigo, mesmo que nível e experiência não tenham mudado.
+ if(sharedProfile.criacaoValidada&&Number(sharedProfile.creationRevision||0)>Number(localHero.creationRevision||0)){
+  const keys=['raca','classe','antecedente','atributos','atributosBase','modoBonus','bonusPrincipal','bonusSecundario','periciasClasse','periciaEspecie','periciasProficientes','salvaguardasProficientes','talentoOrigem','profFerramenta','criacaoValidada','creationRevision'];
+  for(const key of keys)game.character[key]=sharedProfile[key];
+ }
+ // O inventário e os marcos já alcançados pertencem à personagem, não ao save.
+ game.character.equipamento=sharedProfile.equipamento??game.character.equipamento;
+ game.character.conquistas=[...new Set([...(localHero.conquistas||[]),...(sharedProfile.conquistas||[])])];
+}
+if(game?.character){
+ const savedParty=readParty(sharedProfileId);
+ const currentParty=game.character.companheiros||[];
+ const localBest=currentParty.some(a=>(Number(a.experiencia)||0)>0||(Number(a.nivel)||1)>1);
+ const globalBest=savedParty?.some(a=>(Number(a.experiencia)||0)>0||(Number(a.nivel)||1)>1);
+ const best=(globalBest||(!localBest&&savedParty))?savedParty:currentParty;
+ game.character.companheiros=mergeParty(best);
+ if(sharedProfileId&&!globalBest)saveParty(sharedProfileId,game.character.companheiros);
+}
 const char=game?.character||null;
 if(!game||!char){location.replace('/personagens.html')}
-const code=()=>sessionStorage.getItem('dnd-game-code')||'';
-$('access').value=code();
+let loggedIn=false;
 $('campaignTitle').textContent=game?.campaign||'Aventura solo';
 $('sceneTitle').textContent=game?.campaign||'Aventura';
-$('partyStatus').textContent=[char?.nome||'Jogador',...(char?.companheiros||[]).map(c=>c.nome)].join(' · ');
-const placeName=s=>(s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
+$('partyStatus').textContent=[(char?.nome||'Jogador')+' (Nv. '+(char?.nivel||1)+')',...(char?.companheiros||[]).map(c=>c.nome+' (Nv. '+(c.nivel||1)+')')].join(' · ');
+showCharacterValidation();
+const placeName=s=>locationNames[(game?.campaignId||'')+'|'+s]||
+ (s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
 function setNotice(t){$('notice').textContent=t}
-function showAccess(){ $('accessBar').hidden=!!code();if(!code())setNotice('Introduz o teu código de acesso para o Mestre iniciar automaticamente a aventura.')}
+function showAccess(){ $('accessBar').hidden=loggedIn;if(!loggedIn)setNotice('Inicia sessão para o Mestre de Jogo continuar a aventura.');}
+function showCharacterValidation(){
+ const missing=!!char&&!char.criacaoValidada;
+ $('characterValidation').hidden=!missing;
+ $('validateCharacter').href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||'');
+}
 function saveGame(announce=false){
- game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.updated=Date.now();
+ game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.travelHistory=travelHistory.slice(-120);game.locationVisits=locationVisits;game.updated=Date.now();
  localStorage.setItem(saveKey,JSON.stringify(game));
+ queuePlayerSync();
  const profileId=game.characterId||char.id;
  if(profileId){
   const pkey='cv-character-'+profileId;
@@ -102,12 +261,17 @@ function saveGame(announce=false){
   if(existing){
    const next={...existing,equipamento:char.equipamento,personalidade:char.personalidade,
      historia:char.historia,updated:Date.now()};
-   if(Number(char.nivel||1)>Number(existing.nivel||1)){
+   if(Number(char.experiencia||0)>=Number(existing.experiencia||0)){
+     next.experiencia=char.experiencia||0;
+     next.conquistas=Array.isArray(char.conquistas)?char.conquistas:[];
+     for(const key of ['pvTemporarios','dadosVidaGastos','morteSucessos','morteFalhas','classeArmadura','deslocacao','periciasProficientes','periciasEspecialistas','salvaguardasProficientes','magias','capacidades'])if(char[key]!==undefined)next[key]=char[key];
      next.nivel=char.nivel;next.pvMax=char.pvMax;next.pv=char.pv;
    }
    localStorage.setItem(pkey,JSON.stringify(next));
   }
  }
+ if(profileId)saveParty(profileId,mergeParty(char.companheiros));
+ queuePlayerSync();
  if(announce)setNotice('Aventura guardada neste navegador.');
 }
 function render(){
@@ -124,7 +288,8 @@ function render(){
  }
  root.scrollTop=root.scrollHeight;
  renderChoices();
- $('send').disabled=busy||!code()||!messages.some(m=>m.role==='assistant');
+ $('send').disabled=busy||!loggedIn||!char?.criacaoValidada||!messages.some(m=>m.role==='assistant');
+ $('actionImage').disabled=busy||artBusy||!loggedIn||!scene||!messages.some(m=>m.role==='assistant');
  $('locationTitle').textContent='Local: '+placeName(scene);
 }
 function extractLegacyChoices(narrative){
@@ -140,19 +305,29 @@ function stripLegacyChoices(narrative){
  return String(narrative||'').split(/\r?\n/)
  .filter(line=>!/^\s*(?:\*\*)?[1-3][.)](?:\*\*)?\s+/.test(line)).join('\n').trim();
 }
+// As campanhas antigas podem guardar turnos sem escolhas estruturadas.
+function fallbackChoices(narrative){
+ const t=String(narrative||'').toLowerCase();
+ if(/escadaria|escadas/.test(t)&&/inscri[cç][oõ]es|s[ií]mbolos|runa/.test(t))
+  return ['Descer a escadaria com o grupo, atento a armadilhas e perigos.','Examinar as ruínas à procura de outra passagem mais segura.','Investigar os símbolos mágicos antes de avançar (teste de Investigação).'];
+ if(/inscri[cç][oõ]es|s[ií]mbolos|runa/.test(t))
+  return ['Examinar os símbolos e procurar compreender o seu significado.','Pedir aos companheiros que procurem pistas e passagens ocultas.','Avançar com cautela e observar qualquer reação mágica.'];
+ return ['Investigar os arredores à procura de pistas e perigos.','Conversar com os companheiros e decidir em conjunto o próximo passo.','Avançar cautelosamente para explorar o que existe à frente.'];
+}
 function renderChoices(){
  const wrap=$('choices');wrap.replaceChildren();
  const last=messages.at(-1);
  if(!last||last.role!=='assistant'||busy){wrap.hidden=true;return}
- const options=(Array.isArray(last.choices)&&last.choices.length===3)?last.choices:extractLegacyChoices(last.content);
+ const stored=(Array.isArray(last.choices)&&last.choices.length===3)?last.choices:extractLegacyChoices(last.content);
+ const options=stored.length===3?stored:fallbackChoices(last.content);
  if(!options.length){wrap.hidden=true;return}
  wrap.hidden=false;
  options.forEach((option,index)=>{
   const btn=document.createElement('button');btn.type='button';btn.className='choice';
   const num=document.createElement('span');num.className='choice-number';num.textContent=String(index+1);
   const label=document.createElement('span');label.textContent=option;btn.append(num,label);
-  btn.disabled=busy||!code();
-  btn.onclick=()=>{if(busy||!code())return;const text=option.trim();if(!text)return;
+  btn.disabled=busy||!loggedIn||!char?.criacaoValidada;
+  btn.onclick=()=>{if(busy||!loggedIn)return;const text=option.trim();if(!text)return;
     $('action').value='';void runTurn(text);
   };
   wrap.append(btn);
@@ -164,9 +339,10 @@ function displayImage(src){
  const img=document.createElement('img');img.src=src;img.alt='Ilustração do local '+placeName(scene);box.append(img);
 }
 async function request(path,data){
- if(!code())throw Error('Falta o código de acesso.');
+ const token=await gameToken();
+ if(!token)throw Error('Sessão Supabase expirada. Entra novamente.');
  let r;
- try{r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','x-game-code':code()},body:JSON.stringify(data)})}
+ try{r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(data)})}
  catch(e){throw Error('Não foi possível comunicar com o Netlify: '+e.message)}
  const v=await r.json().catch(()=>{throw Error('Resposta inválida do servidor.')});
  if(!r.ok)throw Error(v.error||'Erro de comunicação '+r.status);
@@ -181,52 +357,148 @@ async function imageCache(key,value){
   tx.oncomplete=()=>{db.close();if(value!==undefined)resolve(true)};
   tx.onerror=()=>{db.close();reject(tx.error)};
  })}
+
 function imageKey(locationKey){return saveId+':'+locationKey}
+async function sceneCache(kind,mode,locationKey){
+ const lastGM=[...messages].reverse().find(m=>m.role==='assistant')?.content||'';
+ const lastAction=[...messages].reverse().find(m=>m.role==='user'&&!m.internal)?.content||'';
+ return request('/.netlify/functions/scene-cache',{
+  kind,mode,campaign_id:game.campaignId,location_id:locationKey,save_id:saveId,
+  variant:kind==='location_base'?selectedVariant():'a',
+  scene_text:lastGM,action_text:lastAction,character:char
+ });
+}
+async function getScene(kind,mode,loc,tries=0){
+ const result=await sceneCache(kind,mode,loc);
+ if(result.status==='ready'&&result.url)return result.url;
+ if(result.status==='pending'&&tries<6){
+  await new Promise(resolve=>setTimeout(resolve,1800));
+  return getScene(kind,'lookup',loc,tries+1);
+ }
+ if(result.status==='pending')throw Error('Imagem em preparação noutra sessão. Tenta novamente mais tarde.');
+ return '';
+}
 async function illustrate(locationKey,force=false){
  if(!locationKey||artBusy)return;
- artBusy=true;$('retryImage').hidden=true;
- const token=imageKey(locationKey);
+ artBusy=true;$('retryImage').hidden=true;render();
  try{
-  const cached=force?'':await imageCache(token);
-  if(cached){if(scene===locationKey){artwork=cached;displayImage(cached)}return}
-  if(scene===locationKey){artwork='';displayImage('');setNotice('O Mestre está a ilustrar '+placeName(locationKey)+'…')}
-  const result=await request('/api/image',{character:char,messages,location:locationKey});
-  if(!result.image_data||!result.image_data.startsWith('data:image/'))throw Error('A API não devolveu uma imagem válida.');
-  await imageCache(token,result.image_data);
-  if(scene===locationKey){artwork=result.image_data;displayImage(artwork);setNotice('Imagem do local guardada. Será reutilizada quando regressares.')}
- }catch(e){if(scene===locationKey){$('retryImage').hidden=false;setNotice('A imagem não foi gerada: '+e.message)}}
- finally{artBusy=false}
+  // O Supabase é sempre a referência principal para todos os dispositivos.
+  if(scene===locationKey&&!detailView){artwork='';displayImage('');setNotice('A procurar a imagem no Supabase…')}
+  let url=await getScene('location_base','lookup',locationKey);
+  if(!url){
+   // Imagens anteriores ao Supabase podem estar no IndexedDB do mesmo domínio.
+   // Importá-las preserva a imagem original e não origina qualquer custo OpenAI.
+   let local='';
+   if(selectedVariant()==='a'){
+    try{local=await imageCache(imageKey(locationKey))||await imageCache(imageKey(oldSceneAtLoad))}catch{}
+   }
+   if(local&&/^data:image\/jpeg;base64,/i.test(local)){
+    if(scene===locationKey&&!detailView){artwork=local;displayImage(local);setNotice('A transferir a imagem antiga para o Supabase…')}
+    try{
+     const result=await request('/.netlify/functions/scene-cache',{
+      kind:'location_base',mode:'import',campaign_id:game.campaignId,
+      location_id:locationKey,save_id:saveId,image_data:local
+     });
+     if(result.status==='ready')url=result.url;
+     else if(result.status==='pending')url=await getScene('location_base','lookup',locationKey);
+    }catch(e){setNotice('A imagem antiga aparece, mas a transferência falhou: '+e.message);artwork=local;return}
+   }
+  }
+  if(!url){
+   if(scene===locationKey)setNotice('A gerar uma imagem nova e a guardar no Supabase…');
+   url=await getScene('location_base','generate',locationKey);
+  }
+  if(url&&scene===locationKey){
+   artwork=url;if(!detailView)displayImage(url);
+   setNotice('Imagem recuperada do Supabase; será a mesma noutros dispositivos.');
+  }
+ }catch(e){
+  if(scene===locationKey){$('retryImage').hidden=false;setNotice('Erro na imagem: '+e.message)}
+ }finally{
+  artBusy=false;render();
+  if(scene!==locationKey&&!artwork&&scene)void illustrate(scene);
+ }
 }
 async function loadSceneImage(){
- artwork='';displayImage('');
+ artwork='';if(!detailView)displayImage('');
  if(!scene)return;
- try{const cached=await imageCache(imageKey(scene));if(cached){artwork=cached;displayImage(cached);$('retryImage').hidden=true;return}}
- catch(e){setNotice('O armazenamento de imagens não está disponível: '+e.message)}
  void illustrate(scene);
 }
 function updatedLocation(id){
- const next=String(id||scene||'local-inicial').toLowerCase();
- if(next!==scene){scene=next;if(!visited.includes(scene))visited.push(scene);void loadSceneImage()}
- else if(!artwork&&!artBusy)void loadSceneImage();
+ const next=canonicalLocation(id||scene||'local-inicial');
+ if(next!==scene){
+  scene=next;travelHistory.push(next);travelHistory=travelHistory.slice(-120);locationVisits[scene]=(Number(locationVisits[scene])||0)+1;
+  detailView=false;detailArtwork='';detailKey='';
+  $('baseImage').hidden=true;
+  if(!visited.includes(scene))visited.push(scene);
+  void loadSceneImage();
+ }else if(!artwork&&!artBusy)void loadSceneImage();
  $('locationTitle').textContent='Local: '+placeName(scene);
+}
+async function showDetailedImage(){
+ if(!scene||artBusy||busy||!loggedIn)return;
+ artBusy=true;render();
+ try{
+  const lastNarration=[...messages].reverse().find(m=>m.role==='assistant')?.content||'';
+  const key=scene+'|'+lastNarration;
+  if(detailArtwork&&detailKey===key){
+   detailView=true;displayImage(detailArtwork);$('baseImage').hidden=false;return;
+  }
+  setNotice('A procurar a imagem detalhada no Supabase…');
+  let url=await getScene('action_detail','lookup',scene);
+  if(!url){setNotice('A gerar a imagem desta ação e a guardar no Supabase…');url=await getScene('action_detail','generate',scene)}
+  if(!url)throw Error('Imagem indisponível.');
+  detailArtwork=url;detailKey=key;detailView=true;
+  displayImage(url);$('baseImage').hidden=false;
+  setNotice('Imagem detalhada guardada no Supabase.');
+ }catch(e){setNotice('Erro na imagem detalhada: '+e.message)}
+ finally{artBusy=false;render()}
+}
+$('actionImage').onclick=()=>{void showDetailedImage()};
+$('baseImage').onclick=()=>{detailView=false;$('baseImage').hidden=true;displayImage(artwork)};
+function previousAdventures(){
+ const ids=JSON.parse(localStorage.getItem('cv-save-index')||'[]');
+ const selected=(game?.characterId||char?.id||'');
+ return ids.filter(id=>id!==saveId).map(id=>{
+  let other=null;try{other=JSON.parse(localStorage.getItem('cv-save-'+id)||'null')}catch{}
+  if(!other||(other.characterId||other.character?.id)!==selected)return null;
+  const recent=[...(other.messages||[])].reverse().find(m=>m.role==='assistant')?.content||'';
+  return {title:other.campaign||'Aventura anterior',
+    heroLevel:Number(other.character?.nivel)||1,
+    group:(other.character?.companheiros||[]).map(a=>a.nome+' nível '+(a.nivel||1)),
+    lastEvent:recent.slice(-650)};
+ }).filter(Boolean).slice(0,2);
 }
 async function runTurn(action,{initial=false}={}){
  if(busy)return;
+ if(!char?.criacaoValidada){showCharacterValidation();setNotice('Revê e valida a ficha antes de prosseguir a aventura.');return}
  busy=true;$('send').disabled=true;
  const previous=messages.slice();
  messages.push({role:'user',content:action,internal:initial});
  render();setNotice(initial?'O Mestre está a preparar o prólogo…':'O Mestre está a responder à tua ação…');
  try{
-  const result=await request('/api/story',{character:char,messages,campaign:game.campaign,intro:game.intro,lastLocation:scene});
+  const result=await request('/api/story',{character:char,messages,campaign:game.campaign,intro:game.intro,lastLocation:scene,previousAdventures:previousAdventures()});
   if(!result.text)throw Error('O Mestre não devolveu uma narrativa.');
   messages.push({role:'assistant',content:result.text,choices:Array.isArray(result.choices)?result.choices:[]});
+  detailView=false;detailArtwork='';detailKey='';$('baseImage').hidden=true;
   updatedLocation(result.location);
-  saveGame();render();setNotice('Cena concluída. Podes decidir a próxima ação.');
+  const milestone=String(result.achievement_id||'');
+  const completed=new Set(Array.isArray(char.conquistas)?char.conquistas:[]);
+  const xp=milestone&&!completed.has(milestone)
+    ?Math.max(0,Math.min(150,Number(result.experience_award)||0)):0;
+  if(xp>0){
+   completed.add(milestone);
+   Object.assign(char,advanceMember(char,xp));
+   char.conquistas=[...completed];
+   char.companheiros=(char.companheiros||[]).map(ally=>advanceMember(ally,xp));
+  }
+  saveGame();render();
+  setNotice(xp?'Cena concluída. O grupo recebeu '+xp+' XP por um objetivo alcançado.':'Cena concluída. Podes decidir a próxima ação.');
  }catch(e){messages=previous;render();setNotice('Não foi possível continuar: '+e.message+(initial?' Clica em Tentar iniciar para repetir.':''));if(initial){firstAttempted=false;$('retryStart').hidden=false}}
  finally{busy=false;render()}
 }
 async function begin(){
- if(!code()){showAccess();return}
+ if(!loggedIn){showAccess();return}
  if(messages.some(m=>m.role==='assistant')||busy)return;
  if(firstAttempted)return;
  firstAttempted=true;$('retryStart').hidden=true;
@@ -235,15 +507,11 @@ async function begin(){
 }
 $('send').onclick=()=>{const action=$('action').value.trim();if(!action||busy)return;$('action').value='';void runTurn(action)};
 $('action').addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();$('send').click()}});
-$('accessSave').onclick=()=>{
- const value=$('access').value.trim();
- if(!value){setNotice('Escreve o código de acesso.');return}
- sessionStorage.setItem('dnd-game-code',value);showAccess();render();void begin();
-};
 $('saveBtn').onclick=()=>saveGame(true);
+$('logoutBtn').onclick=async()=>{const sb=await gameClient();await sb.auth.signOut();location.assign('/login.html')};
 $('retryImage').onclick=()=>{if(scene)void illustrate(scene,true)};
 $('retryStart').onclick=()=>{firstAttempted=false;$('retryStart').hidden=true;void begin()};
-$('roll').onclick=()=>{const r=abilityCheck(char,'int');$('dice').textContent='d20 '+r.die+' '+(r.bonus>=0?'+':'')+r.bonus+' = '+r.total};
+$('roll').onclick=()=>showDice();
 const backdrop=$('modalBackdrop');
 $('modalClose').onclick=()=>backdrop.hidden=true;
 backdrop.onclick=e=>{if(e.target===backdrop)backdrop.hidden=true};
@@ -255,18 +523,95 @@ function field(parent,labelText,value,editable=false,onChange=null){
  const i=editable?document.createElement('textarea'):make('p',value||'—');
  if(editable){i.rows=5;i.value=value||'';i.onchange=()=>{if(onChange)onChange(i.value)}}wrap.append(i);parent.append(wrap);
 }
+const signed=n=>n>=0?'+'+n:String(n);
+function showDice(){
+ openModal('🎲 Lançamento de dados',root=>{
+  const bar=make('div',undefined,'dice-options');
+  const count=make('select'),faces=make('select'),bonus=make('input');
+  for(let n=1;n<=10;n++){const opt=make('option',String(n));opt.value=n;count.append(opt)}
+  for(const n of [4,6,8,10,12,20,100]){const opt=make('option','d'+n);opt.value=n;faces.append(opt)}
+  faces.value='20';bonus.type='number';bonus.value='0';bonus.min='-99';bonus.max='99';
+  for(const [label,el] of [['Quantidade',count],['Dado',faces],['Modificador',bonus]]){const wrap=make('label',label);wrap.append(el);bar.append(wrap)}
+  const cast=make('button','Lançar dados'),result=make('div',undefined,'dice-result'),history=make('div',undefined,'dice-history');
+  const rollHistory=[];
+  const renderHistory=()=>{history.replaceChildren();for(const entry of rollHistory.slice(-8).reverse())history.append(make('p',entry))};
+  cast.onclick=()=>{const r=rollDice(count.value,faces.value,bonus.value);const text=r.dice+' '+(r.bonus<0?'− '+Math.abs(r.bonus):'+ '+r.bonus)+'  →  ['+r.rolls.join(', ')+'] = '+r.total;
+    result.textContent=text;rollHistory.push(text);renderHistory();$('dice').textContent=r.dice+' = '+r.total};
+  root.append(make('p','Escolhe o tipo e a quantidade de dados. Os resultados são aleatórios e não alteram automaticamente a narrativa.','helper'),bar,cast,result,make('h3','Últimos lançamentos'),history);
+ });
+}
+function sheetControl(parent,label,value,onUpdate,{min=0,max=999}={}){
+ const wrap=make('label',label,'sheet-input');const input=make('input');input.type='number';input.value=Number(value)||0;input.min=min;input.max=max;
+ input.onchange=()=>{const n=Math.min(max,Math.max(min,Math.trunc(Number(input.value)||0)));input.value=n;onUpdate(n);saveGame()};
+ wrap.append(input);parent.append(wrap);return input;
+}
 function showSheet(){
  openModal('Ficha de '+(char.nome||'Personagem'),root=>{
-  root.append(make('p',char.raca+' · '+char.classe+' · Nível '+(char.nivel||1)+' · '+char.antecedente));
-  root.append(make('p','PV '+(char.pv??'?')+'/'+(char.pvMax??'?')+' · Bónus de proficiência +'+proficiencyBonus(char.nivel||1)));
-  const grid=make('div',undefined,'stats');
-  const abilities={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
-  for(const [code,name] of Object.entries(abilities)){const block=make('div',undefined,'stat'),score=Number(char.atributos?.[code]||10),mod=modifier(score);block.append(make('small',name),make('strong',score+' ('+(mod>=0?'+':'')+mod+')'));grid.append(block)}
-  root.append(grid);field(root,'Personalidade',char.personalidade);field(root,'História',char.historia);
-  root.append(make('h3','Companheiros IA'));
-  for(const ally of char.companheiros||[])root.append(make('div',(ally.nome||'Aliado')+' · '+ally.classe+' · '+ally.papel,'pill'));
-  root.append(make('p','Ficha de regras ainda em desenvolvimento. A progressão automática e o combate SRD completo não estão implementados.','helper'));
- })
+  const prof=proficiencyBonus(char.nivel||1),hitDie=classHitDie(char);
+  const spell=spellAbility(char);
+  const attrs={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
+  root.append(make('p',char.nome+' · '+char.raca+' · '+char.classe+' · '+char.antecedente,'sheet-subtitle'));
+  const essentials=make('div',undefined,'sheet-summary');
+  for(const [k,v] of [['Nível',char.nivel||1],['XP',char.experiencia||0],['Proficiência',signed(prof)],['CA',char.classeArmadura??(10+modifier(char.atributos?.dex??10))],['Iniciativa',signed(modifier(char.atributos?.dex??10))],['Deslocação',char.deslocacao||'—'],['Perceção passiva',10+skillBonus(char,'Perceção')],['Dado de vida','d'+hitDie]]){
+   const cell=make('div',undefined,'stat');cell.append(make('small',k),make('strong',v));essentials.append(cell);
+  }
+  root.append(essentials);
+  const hp=make('div',undefined,'sheet-edit-grid');
+  sheetControl(hp,'PV atuais',char.pv??1,v=>char.pv=Math.min(v,Number(char.pvMax)||v),{max:999});
+  sheetControl(hp,'PV máximos',char.pvMax??1,v=>{char.pvMax=Math.max(1,v);char.pv=Math.min(Number(char.pv)||0,char.pvMax)},{min:1,max:999});
+  sheetControl(hp,'PV temporários',char.pvTemporarios??0,v=>char.pvTemporarios=v);
+  sheetControl(hp,'Dados de vida gastos',char.dadosVidaGastos??0,v=>char.dadosVidaGastos=Math.min(v,Number(char.nivel)||1),{max:20});
+  root.append(make('h3','Pontos de vida e descanso'),hp,make('p','Ajustar estes valores não concede níveis nem XP. Dados de vida disponíveis: '+Math.max(0,(Number(char.nivel)||1)-(Number(char.dadosVidaGastos)||0))+' de '+(char.nivel||1)+'.','helper'));
+  const abilities=make('div',undefined,'stats');
+  for(const [code,name] of Object.entries(attrs)){
+   const value=Number(char.atributos?.[code]??10),score=make('div',undefined,'stat');
+   score.append(make('small',name),make('strong',value+' ('+signed(modifier(value))+')'));abilities.append(score);
+  }
+  root.append(make('h3','Atributos'),abilities);
+  char.salvaguardasProficientes=Array.isArray(char.salvaguardasProficientes)?char.salvaguardasProficientes:initialSavingThrows(char.classe);
+  char.periciasProficientes=Array.isArray(char.periciasProficientes)?char.periciasProficientes:[];
+  char.periciasEspecialistas=Array.isArray(char.periciasEspecialistas)?char.periciasEspecialistas:[];
+  const editLink=make('a','Rever escolhas e validar ficha (SRD 5.2.1)');
+  editLink.href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||'');
+  editLink.className='button secondary';
+  editLink.style.cssText='display:inline-block;margin:8px 0 14px;padding:10px 12px;border:1px solid #bd9454;border-radius:8px;color:#f0d5a4;text-decoration:none';
+  root.append(editLink);
+  if(!char.criacaoValidada)root.append(make('p','Ficha anterior à validação SRD: algumas proficiências podem ter sido atribuídas livremente. Revê a ficha para corrigir as escolhas sem perder a progressão.','helper'));
+  const saves=make('div',undefined,'sheet-skill-grid');
+  for(const [code,name] of Object.entries(attrs)){
+   const label=make('label',undefined,'sheet-check'),check=make('input');
+   check.type='checkbox';check.checked=char.salvaguardasProficientes.includes(code);check.disabled=true;
+   const num=make('strong',signed(savingThrowBonus(char,code)));
+   label.append(check,make('span',name),num);saves.append(label);
+  }
+  root.append(make('h3','Salvaguardas'),make('p','Proficiências determinadas pela classe e capacidades. Para alterar a criação, utiliza «Rever escolhas».','helper'),saves);
+  const skills=make('div',undefined,'sheet-skill-grid');
+  for(const [name,code] of SKILLS_2024){
+   const label=make('label',undefined,'sheet-check'),check=make('input'),bonus=make('strong');
+   check.type='checkbox';check.checked=char.periciasProficientes.includes(name);check.disabled=true;
+   bonus.textContent=signed(skillBonus(char,name));
+   label.append(check,make('span',name+' ('+code.toUpperCase()+')'),bonus);skills.append(label);
+  }
+  root.append(make('h3','18 perícias'),make('p','Só leitura. As escolhas são limitadas pela classe, antecedente e espécie na criação da personagem.','helper'),skills);
+  if(spell){
+   const magic=make('div',undefined,'sheet-summary');
+   const mod=modifier(char.atributos?.[spell]??10);
+   for(const [name,value] of [['Atributo de magia',attrs[spell]],['CD de salvaguarda',8+mod+prof],['Ataque mágico',signed(mod+prof)]]){
+    const cell=make('div',undefined,'stat');cell.append(make('small',name),make('strong',value));magic.append(cell)
+   }
+   root.append(make('h3','Conjuração'),magic);
+   field(root,'Magias conhecidas ou preparadas',char.magias||'',true,v=>{char.magias=v;saveGame()});
+  }
+  const death=make('div',undefined,'sheet-edit-grid');
+  sheetControl(death,'Sucessos contra a morte',char.morteSucessos??0,v=>char.morteSucessos=v,{max:3});
+  sheetControl(death,'Falhas contra a morte',char.morteFalhas??0,v=>char.morteFalhas=v,{max:3});
+  root.append(make('h3','Salvaguardas contra a morte'),death);
+  field(root,'Capacidades, talentos e proficiências adicionais',char.capacidades||'',true,v=>{char.capacidades=v;saveGame()});
+  field(root,'Equipamento e moedas',char.equipamento||'',true,v=>{char.equipamento=v;saveGame()});
+  root.append(make('h3','Companheiros do grupo'));
+  for(const ally of char.companheiros||[])root.append(make('div',(ally.nome||'Aliado')+' · '+ally.classe+' · Nível '+(ally.nivel||1)+' · '+(ally.experiencia||0)+' XP · PV '+(ally.pv??'?')+'/'+(ally.pvMax??'?'),'pill'));
+  root.append(make('p','Ficha expandida com cálculos base SRD 5.2.1. Proficiências, magias e capacidades precisam de validação conforme a classe, espécie, antecedentes e nível. Combate, recursos de classe e recuperação automática ainda não constituem um motor de regras completo.','helper'));
+ });
 }
 function showInventory(){
  openModal('Inventário',root=>{
@@ -279,34 +624,27 @@ function showInventory(){
 }
 function showLocalMap(){
  openModal('Mapa local — '+placeName(scene),root=>{
-  root.append(make('p','Mapa esquemático de exploração. Não representa posições ou distâncias exatas.'));
-  const map=make('div',undefined,'local-map');
-  map.append(make('span',placeName(scene)||'A descobrir'));root.append(map);
-  root.append(make('p','O Mestre ainda não registou saídas e pontos de interesse estruturados. Essas ligações serão acrescentadas quando o motor de exploração estiver concluído.','helper'));
- })
+  renderCampaignMap(root,{campaignId:game.campaignId,currentLocation:scene,visited,history:travelHistory,mode:'auto'});
+ });
 }
 function showWorldMap(){
- openModal('Mapa geral da campanha',root=>{
-  root.append(make('p','Locais visitados por ordem de descoberta. As ligações não representam distâncias geográficas.'));
-  const path=make('div',undefined,'route');
-  for(let i=0;i<visited.length;i++){if(i)path.append(make('span','→'));path.append(make('span',placeName(visited[i])))}
-  if(!visited.length)path.append(make('p','Ainda não foram descobertos locais.'));
-  root.append(path);root.append(make('p','Um mapa geográfico completo com deslocações será desenvolvido posteriormente.','helper'));
- })
+ openModal('Mapa geral — '+(game.campaign||'Aventura'),root=>{
+  renderCampaignMap(root,{campaignId:game.campaignId,currentLocation:scene,visited,history:travelHistory,mode:'global'});
+ });
 }
 for(const btn of document.querySelectorAll('[data-view]')){
  btn.onclick=()=>{
   const type=btn.dataset.view;
   if(type==='ficha')showSheet();
   else if(type==='inventario')showInventory();
-  else if(type==='mapa-local')showLocalMap();
-  else if(type==='mapa-geral')showWorldMap();
+  else if(type==='mapa')showWorldMap();
  }
 }
 async function init(){
- render();showAccess();
+ const token=await requireLogin();if(!token)return;
+ loggedIn=true;if(mislabelledOpening||mislabelledReturn||recoveredSavedScene)saveGame();render();showAccess();showCharacterValidation();
  if(!messages.some(x=>x.role==='assistant')){
-   if(code())void begin();
+   if(loggedIn)void begin();
  }else if(scene){await loadSceneImage()}
 }
 void init();

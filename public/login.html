@@ -1,0 +1,35 @@
+<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crónicas do Véu — Entrar</title><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 0,#303b52,#101723 75%);color:#f5ecdb;font:16px/1.55 system-ui;display:grid;place-items:center;padding:20px}
+main{width:min(440px,100%);background:#1c2839;padding:27px;border-radius:16px;border:1px solid #57687c;box-shadow:0 20px 60px #0005}
+h1{font:700 29px Georgia,serif;color:#e9c284;margin-top:0}p{color:#c0ccdc}label{display:block;margin:15px 0 5px}input{width:100%;padding:12px;background:#0e1827;border:1px solid #697a8f;border-radius:8px;color:white;font:16px system-ui}
+button{margin-top:19px;background:#b79159;border:0;color:#142031;padding:12px 20px;border-radius:8px;cursor:pointer;font-weight:700}button:disabled{opacity:.5}a{color:#e9c284}#status{min-height:24px;color:#f0c48d}
+</style></head><body><main><a href="/">← Início</a><h1>✦ Entrar na aventura</h1>
+<p>Usa a mesma conta Supabase do multijogador. A sessão fica guardada neste dispositivo, sem precisares de introduzir o código do jogo.</p>
+<form id="loginForm"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required>
+<label for="password">Palavra-passe</label><input id="password" type="password" autocomplete="current-password" required>
+<button id="submit" type="submit">Entrar e continuar</button></form>
+<p id="status" role="status"></p><p style="font-size:13px">Ainda não tens conta? <a href="/multijogador.html">Criar conta no multijogador</a>. Uma conta nova precisa de autorização para gerar conteúdo.</p>
+</main><script type="module">
+import {gameClient} from '/auth-client.mjs';
+const $=id=>document.getElementById(id);
+const next=new URLSearchParams(location.search).get('next')||'/';
+const safeNext=next.startsWith('/')&&!next.startsWith('//')?next:'/';
+async function init(){
+ try{
+  const sb=await gameClient();
+  const {data}=await sb.auth.getSession();
+  if(data.session){location.replace(safeNext)}
+ }catch(e){$('status').textContent='Erro de ligação: '+e.message}
+}
+$('loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();$('submit').disabled=true;$('status').textContent='A validar a tua conta…';
+ try{
+  const sb=await gameClient();
+  const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+  if(error)throw error;
+  location.replace(safeNext);
+ }catch(e){$('status').textContent='Não foi possível entrar: '+e.message;$('submit').disabled=false}
+});
+void init();
+</script></body></html>

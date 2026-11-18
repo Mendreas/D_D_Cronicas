@@ -1,0 +1,79 @@
+<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crónicas do Véu — Importar cenas</title><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{background:#101722;color:#f5ead9;font:15px/1.6 system-ui;margin:0}
+main{max-width:860px;margin:auto;padding:28px 18px}h1,h2{color:#e8bc7b;font-family:Georgia,serif}
+a{color:#e8c88b}.panel{background:#1c2837;border:1px solid #47566b;border-radius:14px;padding:22px;margin:20px 0}
+input[type=file]{max-width:100%;padding:14px;background:#101a29;border:1px solid #52677f;border-radius:8px}
+button{background:#b99054;color:#111b28;border:0;border-radius:9px;padding:12px 19px;font-weight:700;cursor:pointer}
+button:disabled{opacity:.45}progress{width:100%;height:17px}#log{max-height:340px;overflow:auto;white-space:pre-wrap;background:#101a28;border-radius:8px;padding:12px}
+.warn{color:#e9c58e}strong{color:#e8be81}
+</style></head><body><main><a href="/">← Voltar ao jogo</a><h1>Importar as imagens das campanhas</h1>
+<p>Ferramenta de importação para o Supabase. Lê o ZIP de imagens no teu computador, envia cada ficheiro para o bucket <strong>scene-images</strong> e associa-o ao local correto.</p>
+<section class="panel"><h2>1. Preparar o catálogo</h2><p>Executa primeiro <code>supabase/variantes_locais.sql</code> no SQL Editor. Este passo permite duas variantes por local sem apagar imagens antigas.</p>
+<h2>2. Selecionar o ZIP</h2>
+<label for="zipFile">Pacote completo ou parcial com manifest.json</label><p><input id="zipFile" type="file" accept=".zip,application/zip"></p>
+<p><label><input type="checkbox" id="replaceExisting"> Substituir imagens existentes (mantém nomes e variantes)</label></p>
+<button id="importBtn" disabled>Importar para o Supabase</button>
+<p class="warn">Por omissão, os ficheiros existentes são preservados. Para substituir as imagens antigas, ativa a opção acima. Não é feita qualquer chamada à OpenAI durante a importação. As imagens do pacote são uma primeira coleção de pré-visualizações; podem ser substituídas posteriormente com uma ferramenta de gestão.</p>
+<p id="progressText" role="status">A confirmar sessão Supabase…</p><progress id="progress" max="48" value="0"></progress><pre id="log"></pre>
+</section></main><script type="module">
+import JSZip from 'https://esm.sh/jszip@3.10.1';
+import {gameToken,requireLogin} from '/auth-client.mjs';
+const $=id=>document.getElementById(id);let loggedIn=false;let working=false;
+function log(msg){$('log').textContent+=msg+'\n';$('log').scrollTop=$('log').scrollHeight}
+async function api(payload){
+ const token=await gameToken();
+ if(!token)throw Error('A sessão expirou. Inicia sessão novamente.');
+ const r=await fetch('/.netlify/functions/scene-cache',{method:'POST',
+  headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+  body:JSON.stringify(payload)});
+ const data=await r.json();
+ if(!r.ok)throw Error(data.error||'Erro '+r.status);
+ return data;
+}
+$('zipFile').addEventListener('change',()=>{$('importBtn').disabled=working||!loggedIn||!$('zipFile').files.length});
+$('importBtn').onclick=async()=>{
+ if(working)return;working=true;$('importBtn').disabled=true;$('log').textContent='';
+ let successes=0,existing=0,replaced=0,failed=0;
+ try{
+  const file=$('zipFile').files[0];
+  if(!file||file.size>60*1024*1024)throw Error('Seleciona um ZIP válido com menos de 60 MB.');
+  const zip=await JSZip.loadAsync(file);
+  const manifestFile=zip.file('manifest.json');
+  if(!manifestFile)throw Error('O ZIP não tem manifest.json na raiz.');
+  const manifest=JSON.parse(await manifestFile.async('string'));
+  const items=manifest.images;
+  if(!Array.isArray(items)||items.length<1||items.length>48)throw Error('O manifesto deve conter entre 1 e 48 imagens.');
+  const seen=new Set();$('progress').max=items.length;$('progress').value=0;
+  for(let i=0;i<items.length;i++){
+   const x=items[i];
+   if(!['veu','farol','estrelas'].includes(x.campaign_id)||!/^[a-z0-9-]{2,80}$/.test(x.location_id)||!['a','b'].includes(x.variant))
+    throw Error('Identificador inválido no manifesto.');
+   const key=x.campaign_id+'|'+x.location_id+'|'+x.variant;
+   if(seen.has(key))throw Error('Imagem duplicada no manifesto: '+key);
+   seen.add(key);
+   const entry=zip.file(x.path);
+   if(!entry)throw Error('Falta ficheiro no ZIP: '+x.path);
+   $('progressText').textContent='A importar '+(i+1)+' de '+items.length+': '+key;
+   try{
+    const basic={kind:'location_base',campaign_id:x.campaign_id,location_id:x.location_id,variant:x.variant};
+    const check=await api({...basic,mode:'lookup'});
+    if(check.status==='ready'&&!$('replaceExisting').checked){existing++;log('Já existe: '+key);continue}
+    const data=await entry.async('base64');
+    const result=await api({...basic,mode:check.status==='ready'?'replace':'import',image_data:'data:image/jpeg;base64,'+data});
+    if(result.status==='ready'){
+     if(result.replaced){replaced++;log('SUBSTITUÍDA: '+key)}
+     else if(result.cached){existing++;log('Já existente: '+key)}
+     else{successes++;log('NOVA: '+key)}
+    }else{failed++;log('Aguarda: '+key+' — '+result.status)}
+   }catch(e){failed++;log('ERRO '+key+': '+e.message)}
+   finally{$('progress').value=i+1}
+  }
+  $('progressText').textContent='Concluído: '+successes+' novas, '+replaced+' substituídas, '+existing+' preservadas, '+failed+' com erro.';
+ }catch(e){$('progressText').textContent='Erro na importação: '+e.message;log(e.message)}
+ finally{working=false;$('importBtn').disabled=!loggedIn||!$('zipFile').files.length}
+};
+async function init(){try{const token=await requireLogin('/importar-imagens.html');if(!token)return;loggedIn=true;$('progressText').textContent='Sessão válida. Seleciona o ZIP para começar.';$('importBtn').disabled=!$('zipFile').files.length}
+ catch(e){$('progressText').textContent='Erro de ligação: '+e.message}}
+void init();
+</script></body></html>
