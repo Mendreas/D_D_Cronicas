@@ -8,6 +8,7 @@ header{text-align:center;padding:25px 5px 45px}header p{color:#b2c3d5;margin:0}
 button.secondary{background:transparent;color:#e6c18b}section{margin:22px 0}.save{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #3a485a;padding:12px 0}.save:last-child{border:0}.save small{display:block;color:#b5c5d4}footer{color:#aebdcc;font-size:12px;text-align:center;margin-top:40px}
 @media(max-width:650px){.tiles{grid-template-columns:1fr}.save{flex-direction:column;align-items:start}}
 </style></head><body><main><header><div class="glyph">✦</div><h1>Crónicas do Véu</h1><p>Uma aventura de fantasia moldada pelas tuas decisões</p></header>
+<p id="cloudState" class="muted" role="status">A validar a conta e o progresso guardado…</p>
 <div class="tiles">
 <a class="tile" href="/personagens.html"><div class="glyph">🧙</div><h2>Jogar Solo</h2><p>Escolher ou criar a tua personagem e depois iniciar uma campanha. No solo tens sempre três companheiros IA.</p></a>
 <a class="tile" href="/multijogador.html"><div class="glyph">🛡️</div><h2>Multijogador</h2><p>Criar ou aderir a uma sala. Até dois jogadores humanos, turnos assíncronos e companheiros IA.</p></a>
@@ -19,7 +20,8 @@ button.secondary{background:transparent;color:#e6c18b}section{margin:22px 0}.sav
 import {requireLogin} from '/auth-client.mjs';
 import {restorePlayerState} from '/cloud-sync.mjs';
 if(await requireLogin()){
- try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}
+ try{await restorePlayerState();document.getElementById('cloudState').textContent='Sessão iniciada · Progresso sincronizado com a tua conta.'}
+ catch(e){document.getElementById('cloudState').textContent='Sessão iniciada · Progresso guardado apenas neste dispositivo. Falta ativar a sincronização Supabase.';console.warn('Sincronização pendente:',e.message)}
 }
 const list=document.getElementById('saves');list.replaceChildren();
 const charList=document.getElementById('characters');const profileIds=JSON.parse(localStorage.getItem('cv-character-index')||'[]');charList.textContent=profileIds.length?profileIds.map(id=>{const x=JSON.parse(localStorage.getItem('cv-character-'+id)||'null');return x?x.nome+' · Nível '+(x.nivel||1):''}).filter(Boolean).join(' · '):'Ainda não existem personagens permanentes nesta versão.';
