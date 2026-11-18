@@ -41,6 +41,9 @@ button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8
 <script type="module">
 import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
 import {initialSavingThrows} from '/rules-2024.mjs';
+import {requireLogin} from '/auth-client.mjs';
+import {restorePlayerState,syncPlayerState} from '/cloud-sync.mjs';
+if(await requireLogin()){try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}}
 const $=id=>document.getElementById(id);
 const params=new URLSearchParams(location.search),editId=params.get('editar'),returnSave=params.get('regressar');
 let existing=null;try{existing=editId?JSON.parse(localStorage.getItem('cv-character-'+editId)||'null'):null}catch{}
@@ -128,7 +131,7 @@ if(existing&&!existing.criacaoValidada){
  update();
  $('notice').textContent='Esta ficha foi criada antes da validação do SRD. Revê e confirma as escolhas; nível, experiência, inventário e campanhas serão conservados.';
 }
-$('start').onclick=()=>{
+$('start').onclick=async()=>{
  if(!existing&&editId)return;
  const nome=$('name').value.trim();if(!nome){$('notice').textContent='Escreve o nome da personagem.';return}
  let valid;
@@ -161,6 +164,7 @@ $('start').onclick=()=>{
  let ids=[];try{ids=JSON.parse(localStorage.getItem('cv-character-index')||'[]')}catch{}
  if(!ids.includes(id))ids.unshift(id);
  localStorage.setItem('cv-character-index',JSON.stringify(ids));localStorage.setItem('cv-active-character',id);
+ try{await syncPlayerState()}catch(e){console.warn('Ficha guardada apenas neste dispositivo:',e.message)}
  location.href=editId?(returnSave?'/solo.html?save='+encodeURIComponent(returnSave):'/personagens.html'):'/campanhas.html?personagem='+encodeURIComponent(id);
 };
 </script></body></html>
