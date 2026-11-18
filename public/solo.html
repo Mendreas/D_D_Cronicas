@@ -56,6 +56,23 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 .cv-map-status{font-size:13px;color:#c8d4de;margin:0}
 @keyframes map-pulse{50%{opacity:.5;r:38}}
 .map-pulse{animation:map-pulse 2.5s ease-in-out infinite}
+.modal:has(.sheet-summary){width:min(1050px,100%)}
+.modal:has(.dice-options){width:min(650px,100%)}
+.sheet-subtitle{color:#e9c58c;font-size:14px}
+.sheet-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sheet-edit-grid,.sheet-skill-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sheet-input{display:flex;flex-direction:column;gap:6px;color:#c4d4dd;font-size:13px}
+.sheet-input input{width:100%}
+.sheet-check{display:flex;align-items:center;gap:10px;padding:9px;border:1px solid #405369;border-radius:8px;background:#142236;font-size:13px;cursor:pointer}
+.sheet-check input{width:17px;height:17px;flex-shrink:0;accent-color:#c5a161}
+.sheet-check span{flex:1}.sheet-check strong{color:#e7c58c;font-size:15px}
+.modal h3{font:700 18px Georgia,serif;color:#edc98a;margin:19px 0 10px}
+.dice-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.dice-options label{display:flex;flex-direction:column;gap:6px;color:#e2c69b}
+.dice-options select,.dice-options input{width:100%}
+.dice-result{font:700 23px Georgia,serif;color:#f3d396;min-height:42px;margin:15px 0;overflow-wrap:anywhere}
+.dice-history p{font-size:12px;color:#c4d2e0;margin:5px 0}
+@media(max-width:650px){.sheet-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.sheet-edit-grid,.sheet-skill-grid{grid-template-columns:1fr}.dice-options{grid-template-columns:1fr 1fr}}
 [hidden]{display:none!important}
 @media(max-width:790px){header{align-items:flex-start}.panels{grid-template-columns:1fr}#chat{height:48vh;min-height:300px}#artBox{height:290px;min-height:290px}.action-row{flex-direction:column}.action-row button{min-height:45px}.stats{grid-template-columns:repeat(2,1fr)}}
 </style></head>
@@ -76,12 +93,12 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <div id="choices" class="choices" aria-label="Escolhas sugeridas pelo Mestre de Jogo" hidden></div>
 <div class="action-row"><textarea id="action" placeholder="Descreve a tua ação: examino a porta, pergunto a Kael, lanço um feitiço..."></textarea>
 <button id="send" disabled>Enviar ação</button></div>
-<div class="bar" style="margin:12px 0 0"><span class="helper">Ctrl + Enter para enviar · A aventura guarda-se automaticamente após cada cena.</span><div class="nav"><button id="roll" class="secondary">🎲 d20</button><span id="dice" class="helper"></span><button id="retryStart" class="secondary" hidden>Tentar iniciar novamente</button><button id="retryImage" class="secondary" hidden>Tentar imagem novamente</button></div></div>
+<div class="bar" style="margin:12px 0 0"><span class="helper">Ctrl + Enter para enviar · A aventura guarda-se automaticamente após cada cena.</span><div class="nav"><button id="roll" class="secondary">🎲 Dados</button><span id="dice" class="helper"></span><button id="retryStart" class="secondary" hidden>Tentar iniciar novamente</button><button id="retryImage" class="secondary" hidden>Tentar imagem novamente</button></div></div>
 <div id="notice" role="status"></div></section>
 </main>
 <div id="modalBackdrop" class="modal-backdrop" hidden role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button class="secondary" id="modalClose">Fechar ✕</button></div><div id="modalBody"></div></div></div>
 <script type="module">
-import {abilityCheck,proficiencyBonus,modifier} from '/rules-2024.mjs';
+import {abilityCheck,proficiencyBonus,modifier,SKILLS_2024,skillBonus,savingThrowBonus,classHitDie,spellAbility,rollDice} from '/rules-2024.mjs';
 import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
 import {renderCampaignMap} from '/mapas.mjs';
 import {advanceMember,mergeParty,readParty,saveParty} from '/progression.mjs';
@@ -221,6 +238,7 @@ function saveGame(announce=false){
    if(Number(char.experiencia||0)>=Number(existing.experiencia||0)){
      next.experiencia=char.experiencia||0;
      next.conquistas=Array.isArray(char.conquistas)?char.conquistas:[];
+     for(const key of ['pvTemporarios','dadosVidaGastos','morteSucessos','morteFalhas','classeArmadura','deslocacao','periciasProficientes','periciasEspecialistas','salvaguardasProficientes','magias','capacidades'])if(char[key]!==undefined)next[key]=char[key];
      next.nivel=char.nivel;next.pvMax=char.pvMax;next.pv=char.pv;
    }
    localStorage.setItem(pkey,JSON.stringify(next));
@@ -465,7 +483,7 @@ $('saveBtn').onclick=()=>saveGame(true);
 $('logoutBtn').onclick=async()=>{const sb=await gameClient();await sb.auth.signOut();location.assign('/login.html')};
 $('retryImage').onclick=()=>{if(scene)void illustrate(scene,true)};
 $('retryStart').onclick=()=>{firstAttempted=false;$('retryStart').hidden=true;void begin()};
-$('roll').onclick=()=>{const r=abilityCheck(char,'int');$('dice').textContent='d20 '+r.die+' '+(r.bonus>=0?'+':'')+r.bonus+' = '+r.total};
+$('roll').onclick=()=>showDice();
 const backdrop=$('modalBackdrop');
 $('modalClose').onclick=()=>backdrop.hidden=true;
 backdrop.onclick=e=>{if(e.target===backdrop)backdrop.hidden=true};
@@ -477,18 +495,91 @@ function field(parent,labelText,value,editable=false,onChange=null){
  const i=editable?document.createElement('textarea'):make('p',value||'—');
  if(editable){i.rows=5;i.value=value||'';i.onchange=()=>{if(onChange)onChange(i.value)}}wrap.append(i);parent.append(wrap);
 }
+const signed=n=>n>=0?'+'+n:String(n);
+function showDice(){
+ openModal('🎲 Lançamento de dados',root=>{
+  const bar=make('div',undefined,'dice-options');
+  const count=make('select'),faces=make('select'),bonus=make('input');
+  for(let n=1;n<=10;n++){const opt=make('option',String(n));opt.value=n;count.append(opt)}
+  for(const n of [4,6,8,10,12,20,100]){const opt=make('option','d'+n);opt.value=n;faces.append(opt)}
+  faces.value='20';bonus.type='number';bonus.value='0';bonus.min='-99';bonus.max='99';
+  for(const [label,el] of [['Quantidade',count],['Dado',faces],['Modificador',bonus]]){const wrap=make('label',label);wrap.append(el);bar.append(wrap)}
+  const cast=make('button','Lançar dados'),result=make('div',undefined,'dice-result'),history=make('div',undefined,'dice-history');
+  const rollHistory=[];
+  const renderHistory=()=>{history.replaceChildren();for(const entry of rollHistory.slice(-8).reverse())history.append(make('p',entry))};
+  cast.onclick=()=>{const r=rollDice(count.value,faces.value,bonus.value);const text=r.dice+' '+(r.bonus<0?'− '+Math.abs(r.bonus):'+ '+r.bonus)+'  →  ['+r.rolls.join(', ')+'] = '+r.total;
+    result.textContent=text;rollHistory.push(text);renderHistory();$('dice').textContent=r.dice+' = '+r.total};
+  root.append(make('p','Escolhe o tipo e a quantidade de dados. Os resultados são aleatórios e não alteram automaticamente a narrativa.','helper'),bar,cast,result,make('h3','Últimos lançamentos'),history);
+ });
+}
+function sheetControl(parent,label,value,onUpdate,{min=0,max=999}={}){
+ const wrap=make('label',label,'sheet-input');const input=make('input');input.type='number';input.value=Number(value)||0;input.min=min;input.max=max;
+ input.onchange=()=>{const n=Math.min(max,Math.max(min,Math.trunc(Number(input.value)||0)));input.value=n;onUpdate(n);saveGame()};
+ wrap.append(input);parent.append(wrap);return input;
+}
 function showSheet(){
  openModal('Ficha de '+(char.nome||'Personagem'),root=>{
-  root.append(make('p',char.raca+' · '+char.classe+' · Nível '+(char.nivel||1)+' · '+char.antecedente));
-  root.append(make('p','PV '+(char.pv??'?')+'/'+(char.pvMax??'?')+' · Bónus de proficiência +'+proficiencyBonus(char.nivel||1)));
-  const grid=make('div',undefined,'stats');
-  const abilities={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
-  for(const [code,name] of Object.entries(abilities)){const block=make('div',undefined,'stat'),score=Number(char.atributos?.[code]||10),mod=modifier(score);block.append(make('small',name),make('strong',score+' ('+(mod>=0?'+':'')+mod+')'));grid.append(block)}
-  root.append(grid);field(root,'Personalidade',char.personalidade);field(root,'História',char.historia);
-  root.append(make('h3','Companheiros IA'));
+  const prof=proficiencyBonus(char.nivel||1),hitDie=classHitDie(char);
+  const spell=spellAbility(char);
+  const attrs={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
+  root.append(make('p',char.nome+' · '+char.raca+' · '+char.classe+' · '+char.antecedente,'sheet-subtitle'));
+  const essentials=make('div',undefined,'sheet-summary');
+  for(const [k,v] of [['Nível',char.nivel||1],['XP',char.experiencia||0],['Proficiência',signed(prof)],['CA',char.classeArmadura??(10+modifier(char.atributos?.dex??10))],['Iniciativa',signed(modifier(char.atributos?.dex??10))],['Deslocação',char.deslocacao||'—'],['Perceção passiva',10+skillBonus(char,'Perceção')],['Dado de vida','d'+hitDie]]){
+   const cell=make('div',undefined,'stat');cell.append(make('small',k),make('strong',v));essentials.append(cell);
+  }
+  root.append(essentials);
+  const hp=make('div',undefined,'sheet-edit-grid');
+  sheetControl(hp,'PV atuais',char.pv??1,v=>char.pv=Math.min(v,Number(char.pvMax)||v),{max:999});
+  sheetControl(hp,'PV máximos',char.pvMax??1,v=>{char.pvMax=Math.max(1,v);char.pv=Math.min(Number(char.pv)||0,char.pvMax)},{min:1,max:999});
+  sheetControl(hp,'PV temporários',char.pvTemporarios??0,v=>char.pvTemporarios=v);
+  sheetControl(hp,'Dados de vida gastos',char.dadosVidaGastos??0,v=>char.dadosVidaGastos=Math.min(v,Number(char.nivel)||1),{max:20});
+  root.append(make('h3','Pontos de vida e descanso'),hp,make('p','Ajustar estes valores não concede níveis nem XP. Dados de vida disponíveis: '+Math.max(0,(Number(char.nivel)||1)-(Number(char.dadosVidaGastos)||0))+' de '+(char.nivel||1)+'.','helper'));
+  const abilities=make('div',undefined,'stats');
+  for(const [code,name] of Object.entries(attrs)){
+   const value=Number(char.atributos?.[code]??10),score=make('div',undefined,'stat');
+   score.append(make('small',name),make('strong',value+' ('+signed(modifier(value))+')'));abilities.append(score);
+  }
+  root.append(make('h3','Atributos'),abilities);
+  char.salvaguardasProficientes=Array.isArray(char.salvaguardasProficientes)?char.salvaguardasProficientes:[];
+  char.periciasProficientes=Array.isArray(char.periciasProficientes)?char.periciasProficientes:[];
+  char.periciasEspecialistas=Array.isArray(char.periciasEspecialistas)?char.periciasEspecialistas:[];
+  const saves=make('div',undefined,'sheet-skill-grid');
+  for(const [code,name] of Object.entries(attrs)){
+   const label=make('label',undefined,'sheet-check'),check=make('input');
+   check.type='checkbox';check.checked=char.salvaguardasProficientes.includes(code);
+   const num=make('strong',signed(savingThrowBonus(char,code)));
+   check.onchange=()=>{char.salvaguardasProficientes=check.checked?[...new Set([...char.salvaguardasProficientes,code])]:char.salvaguardasProficientes.filter(x=>x!==code);num.textContent=signed(savingThrowBonus(char,code));saveGame()};
+   label.append(check,make('span',name),num);saves.append(label);
+  }
+  root.append(make('h3','Salvaguardas'),make('p','Marca proficiência apenas nas salvaguardas concedidas pela classe ou por uma capacidade.','helper'),saves);
+  const skills=make('div',undefined,'sheet-skill-grid');
+  for(const [name,code] of SKILLS_2024){
+   const label=make('label',undefined,'sheet-check'),check=make('input'),bonus=make('strong');
+   check.type='checkbox';check.checked=char.periciasProficientes.includes(name);
+   bonus.textContent=signed(skillBonus(char,name));
+   check.onchange=()=>{char.periciasProficientes=check.checked?[...new Set([...char.periciasProficientes,name])]:char.periciasProficientes.filter(x=>x!==name);bonus.textContent=signed(skillBonus(char,name));saveGame()};
+   label.append(check,make('span',name+' ('+code.toUpperCase()+')'),bonus);skills.append(label);
+  }
+  root.append(make('h3','18 perícias'),make('p','Assinala as perícias proficientes da ficha. A especialização existente é respeitada nos cálculos.','helper'),skills);
+  if(spell){
+   const magic=make('div',undefined,'sheet-summary');
+   const mod=modifier(char.atributos?.[spell]??10);
+   for(const [name,value] of [['Atributo de magia',attrs[spell]],['CD de salvaguarda',8+mod+prof],['Ataque mágico',signed(mod+prof)]]){
+    const cell=make('div',undefined,'stat');cell.append(make('small',name),make('strong',value));magic.append(cell)
+   }
+   root.append(make('h3','Conjuração'),magic);
+   field(root,'Magias conhecidas ou preparadas',char.magias||'',true,v=>{char.magias=v;saveGame()});
+  }
+  const death=make('div',undefined,'sheet-edit-grid');
+  sheetControl(death,'Sucessos contra a morte',char.morteSucessos??0,v=>char.morteSucessos=v,{max:3});
+  sheetControl(death,'Falhas contra a morte',char.morteFalhas??0,v=>char.morteFalhas=v,{max:3});
+  root.append(make('h3','Salvaguardas contra a morte'),death);
+  field(root,'Capacidades, talentos e proficiências adicionais',char.capacidades||'',true,v=>{char.capacidades=v;saveGame()});
+  field(root,'Equipamento e moedas',char.equipamento||'',true,v=>{char.equipamento=v;saveGame()});
+  root.append(make('h3','Companheiros do grupo'));
   for(const ally of char.companheiros||[])root.append(make('div',(ally.nome||'Aliado')+' · '+ally.classe+' · Nível '+(ally.nivel||1)+' · '+(ally.experiencia||0)+' XP · PV '+(ally.pv??'?')+'/'+(ally.pvMax??'?'),'pill'));
-  root.append(make('p','Experiência: '+(char.experiencia||0)+' XP. Nível e PV partilhados entre aventuras neste navegador. Talentos, magias e combate SRD completos ainda em desenvolvimento.','helper'));
- })
+  root.append(make('p','Ficha expandida com cálculos base SRD 5.2.1. Proficiências, magias e capacidades precisam de validação conforme a classe, espécie, antecedentes e nível. Combate, recursos de classe e recuperação automática ainda não constituem um motor de regras completo.','helper'));
+ });
 }
 function showInventory(){
  openModal('Inventário',root=>{
