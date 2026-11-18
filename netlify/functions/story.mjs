@@ -36,6 +36,12 @@ export default async (request) => {
     const location=isOpeningScene&&campaignStart?campaignStart:
       (match?match[1].toLowerCase():(lastLocation||'local-inicial'));
     const clean=match?txt.slice(0,match.index).trim():txt;
+    // O identificador do modelo pode ficar atrasado face à sua própria narrativa.
+    // Corrigir apenas um regresso explícito à torre, não meras referências às ruínas.
+    const returnedToTower=campaign==='O Limiar do Véu'&&lastLocation==='aldeia-blackwood'
+      &&location==='aldeia-blackwood'
+      &&/(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\\s+(?:de novo\\s+)?(?:[àa]\\s+|para\\s+|junto\\s+[àa]\\s+|perto\\s+d[aeo]\\s+)?(?:entrada\\s+d[aeo]\\s+)?(?:torre|ru[ií]nas)|(?:[àa]\\s+)?entrada\\s+d[aeo]\\s+torre/i.test(clean);
+    const resolvedLocation=returnedToTower?'blackwood-ruinas':location;
     // Extract player choices into explicit UI actions instead of repeating them in the narrative.
     // Supports 1. / 1) and optional Markdown formatting.
     const lines=clean.split(/\r?\n/);
@@ -58,6 +64,6 @@ export default async (request) => {
       const after=lines.slice(last+1).filter(line=>!/^\s*(?:podes|também podes|em alternativa|ou podes)\b/i.test(line));
       narrative=[...before,...after].join('\n').trim();
     }
-    return Response.json({text:narrative||clean,location,choices:choices.length===3?choices:[]});
+    return Response.json({text:narrative||clean,location:resolvedLocation,choices:choices.length===3?choices:[]});
   }catch(e){return Response.json({error:String(e.message||e)},{status:400});}
 };
