@@ -45,37 +45,37 @@ export default async (request) => {
     // descreve uma deslocação física inequívoca. Funciona nas três campanhas.
     const destinations={
       'O Limiar do Véu':[
-        ['cripta-subterranea', /(?:entras?|penetras?|desces?|chegas?|avan[cç]as?|encontras?-te|regressas?)\\b[^.!?]{0,100}\\b(?:cripta|c[aâ]mara funer[aá]ria)/i],
-        ['camara-ritual', /(?:entras?|penetras?|chegas?|avan[cç]as?|encontras?-te)\\b[^.!?]{0,90}\\b(?:c[aâ]mara do artefacto|c[aâ]mara ritual|sala do artefacto)/i],
-        ['escadaria-torre', /(?:entras?|penetras?|desces?|sobes?|chegas?|avan[cç]as?|encontras?-te|segues?)\\b[^.!?]{0,95}\\b(?:escadaria|escadas|degraus)\\b/i],
-        ['sala-ruinas', /(?:entras?|penetras?|chegas?|avan[cç]as?|encontras?-te|atravessas?)\\b[^.!?]{0,95}\\b(?:interior da torre|sal[aã]o das ru[ií]nas|sala da torre)/i],
-        ['blackwood-ruinas', /(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\\b[^.!?]{0,85}\\b(?:ru[ií]nas|torre|entrada da torre)/i],
-        ['aldeia-blackwood', /(?:regressas?|voltas?|chegas?|entras?|atravessas?|diriges-te)\\b[^.!?]{0,80}\\b(?:aldeia|vila|mercado)\\b/i],
-        ['circulo-pedras', /(?:chegas?|entras?|avan[cç]as?|encontras?-te)\\b[^.!?]{0,90}\\b(?:c[ií]rculo de pedras|menires|clareira sagrada)/i],
-        ['trilha-sombria', /(?:entras?|avan[cç]as?|chegas?|caminhas?|segues?|regressas?)\\b[^.!?]{0,90}\\b(?:floresta|trilho|trilha|bosque)/i]
+        ['cripta-subterranea', /(?:entras?|penetras?|desces?|chegas?|avan[cç]as?|encontras?-te|regressas?)\b[^.!?]{0,100}\b(?:cripta|c[aâ]mara funer[aá]ria)/i],
+        ['camara-ritual', /(?:entras?|penetras?|chegas?|avan[cç]as?|encontras?-te)\b[^.!?]{0,90}\b(?:c[aâ]mara do artefacto|c[aâ]mara ritual|sala do artefacto)/i],
+        ['escadaria-torre', /(?:entras?|penetras?|desces?|sobes?|chegas?|avan[cç]as?|encontras?-te|segues?)\b[^.!?]{0,95}\b(?:escadaria|escadas|degraus)\b/i],
+        ['sala-ruinas', /(?:entras?|penetras?|chegas?|avan[cç]as?|encontras?-te|atravessas?)\b[^.!?]{0,95}\b(?:interior da torre|sal[aã]o das ru[ií]nas|sala da torre)/i],
+        ['blackwood-ruinas', /(?:regressas?|voltas?|aproximas-te|chegas?|diriges-te|encontras-te|est[aá]s)\b[^.!?]{0,85}\b(?:ru[ií]nas|torre|entrada da torre)/i],
+        ['aldeia-blackwood', /(?:regressas?|voltas?|chegas?|entras?|atravessas?|diriges-te)\b[^.!?]{0,80}\b(?:aldeia|vila|mercado)\b/i],
+        ['circulo-pedras', /(?:chegas?|entras?|avan[cç]as?|encontras?-te)\b[^.!?]{0,90}\b(?:c[ií]rculo de pedras|menires|clareira sagrada)/i],
+        ['trilha-sombria', /(?:entras?|avan[cç]as?|chegas?|caminhas?|segues?|regressas?)\b[^.!?]{0,90}\b(?:floresta|trilho|trilha|bosque)/i]
       ],
       'O Farol de Cinzabruma':[
-        ['sala-da-lanterna', /(?:entras?|chegas?|sobes?|atinges?|encontras?-te)\\b[^.!?]{0,90}\\b(?:sala da lanterna|topo do farol|lanterna do farol)/i],
-        ['tunel-contrabandistas', /(?:entras?|avan[cç]as?|desces?|chegas?|encontras?-te|atravessas?)\\b[^.!?]{0,90}\\b(?:t[uú]nel|passagem secreta)/i],
-        ['gruta-oculta', /(?:entras?|chegas?|descobres?|encontras?-te|avan[cç]as?)\\b[^.!?]{0,90}\\b(?:gruta|caverna)/i],
-        ['interior-farol', /(?:entras?|penetr[aá]s?|sobes?|encontras?-te|avan[cç]as?)\\b[^.!?]{0,80}\\b(?:interior do farol|escadaria do farol|dentro do farol)/i],
-        ['exterior-farol', /(?:chegas?|regressas?|aproximas-te|diriges-te|encontras?-te)\\b[^.!?]{0,80}\\b(?:base do farol|exterior do farol|entrada do farol)/i],
-        ['falesia-tempestuosa', /(?:chegas?|atravessas?|avan[cç]as?|segues?|encontras?-te)\\b[^.!?]{0,80}\\b(?:fal[eé]sia|fal[eé]sias)/i],
-        ['vila-cinzabruma', /(?:chegas?|regressas?|entras?|avan[cç]as?|atravessas?)\\b[^.!?]{0,80}\\b(?:vila|aldeia|mercado)/i],
-        ['porto-cinzabruma', /(?:chegas?|regressas?|entras?|avan[cç]as?|atravessas?|encontras?-te)\\b[^.!?]{0,80}\\b(?:porto|cais|docas)/i]
+        ['sala-da-lanterna', /(?:entras?|chegas?|sobes?|atinges?|encontras?-te)\b[^.!?]{0,90}\b(?:sala da lanterna|topo do farol|lanterna do farol)/i],
+        ['tunel-contrabandistas', /(?:entras?|avan[cç]as?|desces?|chegas?|encontras?-te|atravessas?)\b[^.!?]{0,90}\b(?:t[uú]nel|passagem secreta)/i],
+        ['gruta-oculta', /(?:entras?|chegas?|descobres?|encontras?-te|avan[cç]as?)\b[^.!?]{0,90}\b(?:gruta|caverna)/i],
+        ['interior-farol', /(?:entras?|penetr[aá]s?|sobes?|encontras?-te|avan[cç]as?)\b[^.!?]{0,80}\b(?:interior do farol|escadaria do farol|dentro do farol)/i],
+        ['exterior-farol', /(?:chegas?|regressas?|aproximas-te|diriges-te|encontras?-te)\b[^.!?]{0,80}\b(?:base do farol|exterior do farol|entrada do farol)/i],
+        ['falesia-tempestuosa', /(?:chegas?|atravessas?|avan[cç]as?|segues?|encontras?-te)\b[^.!?]{0,80}\b(?:fal[eé]sia|fal[eé]sias)/i],
+        ['vila-cinzabruma', /(?:chegas?|regressas?|entras?|avan[cç]as?|atravessas?)\b[^.!?]{0,80}\b(?:vila|aldeia|mercado)/i],
+        ['porto-cinzabruma', /(?:chegas?|regressas?|entras?|avan[cç]as?|atravessas?|encontras?-te)\b[^.!?]{0,80}\b(?:porto|cais|docas)/i]
       ],
       'As Chaves das Estrelas':[
-        ['portal-estelar', /(?:entras?|atravessas?|chegas?|avan[cç]as?|encontras?-te)\\b[^.!?]{0,90}\\b(?:portal|santu[aá]rio das chaves)/i],
-        ['jardim-constelacao', /(?:chegas?|entras?|atravessas?|avan[cç]as?|encontras?-te)\\b[^.!?]{0,90}\\b(?:jardim|terra[cç]o das constela[cç][oõ]es)/i],
-        ['biblioteca-estelar', /(?:chegas?|entras?|avan[cç]as?|encontras?-te)\\b[^.!?]{0,90}\\b(?:biblioteca|arquivo astral)/i],
-        ['camara-astral', /(?:chegas?|entras?|avan[cç]as?|encontras?-te)\\b[^.!?]{0,90}\\b(?:c[aâ]mara astral|c[aâ]mara das estrelas|santu[aá]rio astral)/i],
-        ['corredor-celeste', /(?:chegas?|entras?|avan[cç]as?|atravessas?|encontras?-te|segues?)\\b[^.!?]{0,90}\\b(?:corredor|passagem das ru[ií]nas)/i],
-        ['sala-dos-mapas', /(?:chegas?|entras?|avan[cç]as?|encontras?-te)\\b[^.!?]{0,90}\\b(?:sala dos mapas|cartografia astral)/i],
-        ['observatorio-cupula', /(?:chegas?|entras?|sobes?|avan[cç]as?|encontras?-te)\\b[^.!?]{0,90}\\b(?:c[uú]pula|telesc[oó]pio principal)/i],
-        ['observatorio-exterior', /(?:chegas?|regressas?|aproximas-te|encontras?-te)\\b[^.!?]{0,90}\\b(?:exterior do observat[oó]rio|entrada do observat[oó]rio|planalto)/i]
+        ['portal-estelar', /(?:entras?|atravessas?|chegas?|avan[cç]as?|encontras?-te)\b[^.!?]{0,90}\b(?:portal|santu[aá]rio das chaves)/i],
+        ['jardim-constelacao', /(?:chegas?|entras?|atravessas?|avan[cç]as?|encontras?-te)\b[^.!?]{0,90}\b(?:jardim|terra[cç]o das constela[cç][oõ]es)/i],
+        ['biblioteca-estelar', /(?:chegas?|entras?|avan[cç]as?|encontras?-te)\b[^.!?]{0,90}\b(?:biblioteca|arquivo astral)/i],
+        ['camara-astral', /(?:chegas?|entras?|avan[cç]as?|encontras?-te)\b[^.!?]{0,90}\b(?:c[aâ]mara astral|c[aâ]mara das estrelas|santu[aá]rio astral)/i],
+        ['corredor-celeste', /(?:chegas?|entras?|avan[cç]as?|atravessas?|encontras?-te|segues?)\b[^.!?]{0,90}\b(?:corredor|passagem das ru[ií]nas)/i],
+        ['sala-dos-mapas', /(?:chegas?|entras?|avan[cç]as?|encontras?-te)\b[^.!?]{0,90}\b(?:sala dos mapas|cartografia astral)/i],
+        ['observatorio-cupula', /(?:chegas?|entras?|sobes?|avan[cç]as?|encontras?-te)\b[^.!?]{0,90}\b(?:c[uú]pula|telesc[oó]pio principal)/i],
+        ['observatorio-exterior', /(?:chegas?|regressas?|aproximas-te|encontras?-te)\b[^.!?]{0,90}\b(?:exterior do observat[oó]rio|entrada do observat[oó]rio|planalto)/i]
       ]
     };
-    const sentences=clean.split(/(?<=[.!?])\\s+|\\n+/).filter(Boolean);
+    const sentences=clean.split(/(?<=[.!?])\s+|\\n+/).filter(Boolean);
     const lastPhysicalMove=sentences.reduce((found,sentence)=>{
       for(const [id,pattern] of (destinations[campaign]||[]))if(pattern.test(sentence))return id;
       return found;
