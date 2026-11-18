@@ -79,7 +79,9 @@ export default async (request) => {
         ['observatorio-exterior', /(?:chegas?|regressas?|aproximas-te|encontras?-te)\b[^.!?]{0,90}\b(?:exterior do observat[oó]rio|entrada do observat[oó]rio|planalto)/i]
       ]
     };
-    const sentences=clean.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
+    // Não tratar sugestões de ações futuras como deslocações que já aconteceram.
+    const locationNarrative=clean.split(/\r?\n/).filter(line=>!/^\s*(?:\*\*)?[1-3][.)]/.test(line)).join('\n');
+    const sentences=locationNarrative.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
     const lastPhysicalMove=sentences.reduce((found,sentence)=>{
       for(const [id,pattern] of (destinations[campaign]||[]))if(pattern.test(sentence))return id;
       return found;
