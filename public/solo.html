@@ -176,11 +176,21 @@ function stripLegacyChoices(narrative){
  return String(narrative||'').split(/\r?\n/)
  .filter(line=>!/^\s*(?:\*\*)?[1-3][.)](?:\*\*)?\s+/.test(line)).join('\n').trim();
 }
+// As campanhas antigas podem guardar turnos sem escolhas estruturadas.
+function fallbackChoices(narrative){
+ const t=String(narrative||'').toLowerCase();
+ if(/escadaria|escadas/.test(t)&&/inscri[cç][oõ]es|s[ií]mbolos|runa/.test(t))
+  return ['Descer a escadaria com o grupo, atento a armadilhas e perigos.','Examinar as ruínas à procura de outra passagem mais segura.','Investigar os símbolos mágicos antes de avançar (teste de Investigação).'];
+ if(/inscri[cç][oõ]es|s[ií]mbolos|runa/.test(t))
+  return ['Examinar os símbolos e procurar compreender o seu significado.','Pedir aos companheiros que procurem pistas e passagens ocultas.','Avançar com cautela e observar qualquer reação mágica.'];
+ return ['Investigar os arredores à procura de pistas e perigos.','Conversar com os companheiros e decidir em conjunto o próximo passo.','Avançar cautelosamente para explorar o que existe à frente.'];
+}
 function renderChoices(){
  const wrap=$('choices');wrap.replaceChildren();
  const last=messages.at(-1);
  if(!last||last.role!=='assistant'||busy){wrap.hidden=true;return}
- const options=(Array.isArray(last.choices)&&last.choices.length===3)?last.choices:extractLegacyChoices(last.content);
+ const stored=(Array.isArray(last.choices)&&last.choices.length===3)?last.choices:extractLegacyChoices(last.content);
+ const options=stored.length===3?stored:fallbackChoices(last.content);
  if(!options.length){wrap.hidden=true;return}
  wrap.hidden=false;
  options.forEach((option,index)=>{
