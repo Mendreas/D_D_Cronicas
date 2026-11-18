@@ -63,8 +63,9 @@ export default async function(request){
       encodeURIComponent(cacheKey)+'&status=eq.generating&select=updated_at&limit=1');
     return reply({status:locks?.length?'pending':'missing',kind,location});
   }
-  if(data.mode!=='generate')return reply({error:'Operação inválida'},400);
-  if(!process.env.OPENAI_API_KEY)return reply({error:'Falta OPENAI_API_KEY no Netlify'},503);
+  if(!['generate','import'].includes(data.mode))return reply({error:'Operação inválida'},400);
+  if(data.mode==='import'&&kind!=='location_base')return reply({error:'Só é possível importar imagens base antigas'},400);
+  if(data.mode==='generate'&&!process.env.OPENAI_API_KEY)return reply({error:'Falta OPENAI_API_KEY no Netlify'},503);
   const claimed=await api('/rest/v1/rpc/claim_scene_generation',{
     method:'POST',data:{p_cache_key:cacheKey},headers:{'Content-Type':'application/json'}});
   if(claimed!==true)return reply({status:'pending',kind,location});
@@ -81,16 +82,26 @@ export default async function(request){
     'Imagem DETALHADA de uma ação numa aventura de fantasia heróica. Local: '+location+
     '. Última narrativa: '+gmText.slice(0,3200)+'. Ação: '+action+
     '. Personagens: '+char+'. Fotorealista cinematográfico, composição expressiva, sem letras, sem UI.';
-  const ai=await fetch('https://api.openai.com/v1/images/generations',{
-   method:'POST',headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},
-   body:JSON.stringify({model:process.env.IMAGE_MODEL||'gpt-image-2',prompt,size:'1536x1024',quality:'low',output_format:'jpeg',output_compression:65}),
-   signal:AbortSignal.timeout(45000)});
-  const result=await ai.json();
-  if(!ai.ok)throw Error(result.error?.message||'Falha na geração da imagem');
-  const b64=result.data?.[0]?.b64_json;
-  if(!b64)throw Error('A API não devolveu imagem');
-  const bytes=Buffer.from(b64,'base64');
-  if(bytes.byteLength>12*1024*1024)throw Error('Imagem excede limite de segurança');
+  let bytes;
+  if(data.mode==='import'){
+    const encoded=String(data.image_data||'');
+    const match=/^data:image\/(?:jpeg|jpg);base64,([A-Za-z0-9+/=]+)$/.exec(encoded);
+    if(!match||match[1].length>5_600_000)throw Error('Imagem antiga inválida ou demasiado grande para importar.');
+    bytes=Buffer.from(match[1],'base64');
+    if(bytes.length<100||bytes.length>4_200_000||bytes[0]!==0xff||bytes[1]!==0xd8||bytes[2]!==0xff)
+      throw Error('A imagem antiga não é um JPEG válido.');
+  }else{
+    const ai=await fetch('https://api.openai.com/v1/images/generations',{
+     method:'POST',headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},
+     body:JSON.stringify({model:process.env.IMAGE_MODEL||'gpt-image-2',prompt,size:'1536x1024',quality:'low',output_format:'jpeg',output_compression:65}),
+     signal:AbortSignal.timeout(45000)});
+    const result=await ai.json();
+    if(!ai.ok)throw Error(result.error?.message||'Falha na geração da imagem');
+    const b64=result.data?.[0]?.b64_json;
+    if(!b64)throw Error('A API não devolveu imagem');
+    bytes=Buffer.from(b64,'base64');
+    if(bytes.byteLength>12*1024*1024)throw Error('Imagem excede limite de segurança');
+  }
   // Armazena o ficheiro antes de gravar o registo. Se o insert falhar,
   // a próxima tentativa pode reaproveitar o objeto.
   const upload=await fetch(url+'/storage/v1/object/'+BUCKET+'/'+filePath,{
