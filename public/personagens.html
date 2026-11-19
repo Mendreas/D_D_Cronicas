@@ -38,6 +38,7 @@ function previewCharacter(id){
   character,
   editHref:'/personagem.html?editar='+encodeURIComponent(id),
   onSave:()=>{
+   character.sheetRevision=Date.now();
    character.updated=Date.now();
    localStorage.setItem('cv-character-'+id,JSON.stringify(character));
    queuePlayerSync();
