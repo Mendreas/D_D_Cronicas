@@ -175,16 +175,6 @@ try{
  abilityScores=recommendedAbilities($('cls').value,'point');
 }
 $('abilityMethod').value=method;
-for(const code of ABILITY_CODES){
- const label=document.createElement('label');label.className='ability-card';
- const title=document.createElement('span');title.className='ability-name';title.textContent=ABILITY_LABELS[code];
- const caption=document.createElement('span');caption.className='ability-mod-caption';caption.textContent='Modificador';
- const mod=document.createElement('span');mod.className='ability-mod';mod.id='ab-mod-'+code;
- const select=document.createElement('select');select.id='ab-'+code;
- const hint=document.createElement('small');hint.className='ability-note';hint.id='ab-hint-'+code;
- label.append(title,caption,mod,select,hint);$('abilities').append(label);
- select.addEventListener('change',()=>changeAbility(code,Number(select.value)));
-}
 function currentBase(){return {...abilityScores}}
 function methodChoices(){
  if(method==='point')return [8,9,10,11,12,13,14,15];
@@ -196,7 +186,9 @@ function assignmentDifference(){
  const remaining=new Map();
  expected.forEach(value=>remaining.set(value,(remaining.get(value)||0)+1));
  const excess=[];
- for(const value of ABILITY_CODES.map(code=>abilityScores[code])){
+ for(const code of ABILITY_CODES){
+  const value=abilityScores[code];
+  if(value===null)continue;
   const count=remaining.get(value)||0;
   if(count>0)remaining.set(value,count-1);
   else excess.push(value);
@@ -205,53 +197,114 @@ function assignmentDifference(){
  for(const [value,count] of remaining)for(let i=0;i<count;i++)missing.push(value);
  return {excess,missing};
 }
+const signed=n=>n>=0?'+'+n:String(n);
+function backgroundBonus(code){
+ const bg=BACKGROUNDS[$('background').value];
+ if(!bg||!bg.abilities.includes(code))return 0;
+ if($('bonusMode').value==='triple')return 1;
+ if($('bonusFirst').value===code)return 2;
+ if($('bonusSecond').value===code)return 1;
+ return 0;
+}
+function createLabel(tag,cls,value){
+ const node=document.createElement(tag);if(cls)node.className=cls;
+ if(value!==undefined)node.textContent=String(value);
+ return node;
+}
 function showAbilityControls(){
- const options=methodChoices();
+ const pool=method==='standard'?[...STANDARD_ARRAY]:method==='rolled'?[...rollPool]:[];
  const scoreCounts=new Map();
- for(const value of Object.values(abilityScores))scoreCounts.set(value,(scoreCounts.get(value)||0)+1);
+ for(const value of Object.values(abilityScores)){
+  if(value===null)continue;
+  scoreCounts.set(value,(scoreCounts.get(value)||0)+1);
+ }
  const availableCounts=new Map();
- if(method==='standard'||method==='rolled'){
-  for(const score of (method==='standard'?STANDARD_ARRAY:rollPool))
-   availableCounts.set(score,(availableCounts.get(score)||0)+1);
+ for(const value of pool)availableCounts.set(value,(availableCounts.get(value)||0)+1);
+ const restricted=method==='standard'||method==='rolled';
+ const bank=$('abilityBank');bank.replaceChildren();
+ if(restricted){
+  const assignedSoFar=new Map();
+  pool.forEach(value=>{
+   const chip=createLabel('span','ability-bank-token',value);
+   const ordinal=assignedSoFar.get(value)||0;assignedSoFar.set(value,ordinal+1);
+   chip.classList.toggle('assigned',ordinal<(scoreCounts.get(value)||0));
+   bank.append(chip);
+  });
+  const assigned=ABILITY_CODES.filter(code=>abilityScores[code]!==null).length;
+  bank.append(createLabel('div','ability-bank-status',assigned+' de 6 valores atribuídos. Os riscados já foram usados.'));
+ }else{
+  const spent=pointCostTotal(abilityScores),free=POINT_BUDGET-spent;
+  bank.append(createLabel('span','ability-bank-token',free<0?'+'+(-free):String(free)));
+  bank.append(createLabel('div','ability-bank-status',free<0?'Pontos acima do limite; reduz outros atributos.':'Pontos ainda disponíveis para a compra de atributos.'));
  }
- for(const code of ABILITY_CODES){
-  const sel=$('ab-'+code);
-  const value=abilityScores[code];
-  sel.replaceChildren();
-  for(const score of options){
-   const opt=document.createElement('option');
-   opt.value=String(score);
-   opt.textContent=String(score);
-   sel.append(opt);
-  }
-  sel.value=String(value);
-  sel.classList.toggle('changed-ability',lastAbilityChange?.code===code);
-  sel.classList.toggle('invalid-ability',(method==='rolled'||method==='standard')&&
-   (scoreCounts.get(value)||0)>(availableCounts.get(value)||0));
-  const hint=$('ab-hint-'+code);
-  hint.classList.remove('positive','negative');
-  hint.textContent='';
-  $('ab-mod-'+code).textContent=(modifier(value)>=0?'+':'')+modifier(value);
- }
+ $('clearAssignments').hidden=!restricted;
  $('rollAbilities').hidden=method!=='rolled';
- $('dicePool').hidden=method!=='rolled';
+ $('dicePool').hidden=true;
  $('methodDescription').textContent=method==='point'
-  ?'Escolhe os valores dos atributos entre 8 e 15. Se não conseguires aumentar um deles, diminui outro. O jogo verifica os limites oficiais automaticamente.'
+  ?'Compra de pontos: escolhe os valores diretamente. Se ultrapassares o limite de criação, reduz manualmente outros atributos.'
   :method==='standard'
-  ?'D&D oficial: distribui 15, 14, 13, 12, 10 e 8, uma vez cada. Se repetires um valor, o jogo assinala o erro e deixa-te corrigir manualmente; não faz trocas.'
-  :'D&D oficial: os dados geram seis valores fixos. Atribui-os manualmente aos seis atributos sem repetir nenhum além do número de vezes obtido; o jogo não altera outros valores.';
- if(method==='rolled'){
-  $('dicePool').textContent='Valores gerados pelos dados: '+rollPool.join(' · ')+'. Usa cada resultado exatamente uma vez.';
+  ?'Array padrão: atribui os seis valores, cada um uma vez. Usa Libertar para mudar escolhas sem alterar outros atributos.'
+  :'Dados: cada resultado foi gerado com 4d6, descartando o menor. Os valores são atribuídos uma vez cada, sem trocas automáticas.';
+ const area=$('abilities');area.replaceChildren();
+ for(const code of ABILITY_CODES){
+  const base=abilityScores[code],bonus=backgroundBonus(code),final=base===null?null:Math.min(20,base+bonus);
+  const card=createLabel('div','ability-card');
+  const header=createLabel('div','attribute-card-head');
+  header.append(createLabel('span','ability-name',ABILITY_LABELS[code]));
+  header.append(createLabel('span','ability-boost',bonus?'Antecedente '+signed(bonus):''));
+  card.append(header);
+  const choices=createLabel('div','attribute-choices'+(restricted?' six-values':''));
+  const options=methodChoices();
+  for(const score of options){
+   const button=createLabel('button','attribute-choice',score);button.type='button';
+   const selected=base===score;
+   button.setAttribute('aria-pressed',String(selected));
+   button.setAttribute('aria-label','Atribuir '+score+' a '+ABILITY_LABELS[code]);
+   const unavailable=restricted&&!selected&&(scoreCounts.get(score)||0)>=(availableCounts.get(score)||0);
+   button.disabled=unavailable;
+   if(unavailable)button.title='Já atribuído a outro atributo. Liberta-o primeiro.';
+   button.onclick=()=>changeAbility(code,score);
+   choices.append(button);
+  }
+  card.append(choices);
+  const result=createLabel('div','attribute-result');
+  const mod=createLabel('span','attribute-mod',final===null?'—':signed(modifier(final)));
+  const finalGroup=createLabel('div','attribute-final');
+  finalGroup.append(createLabel('span',null,'Valor final'));
+  finalGroup.append(createLabel('strong',null,final===null?'—':final));
+  result.append(mod,finalGroup);card.append(result);
+  const actions=createLabel('div','attribute-card-actions');
+  if(restricted&&base!==null){
+   const release=createLabel('button','attribute-release','Libertar '+base);
+   release.type='button';release.onclick=()=>{
+    abilityScores={...abilityScores,[code]:null};
+    lastAbilityChange=null;abilityTouched=true;update();
+   };actions.append(release);
+  }
+  card.append(actions);area.append(card);
  }
 }
+$('clearAssignments').onclick=()=>{
+ if(method==='point')return;
+ abilityScores=Object.fromEntries(ABILITY_CODES.map(code=>[code,null]));
+ lastAbilityChange=null;abilityTouched=true;update();
+};
 function changeAbility(code,newScore){
  const old=abilityScores[code];
  if(newScore===old)return;
- // Nunca mexer noutro atributo: os avisos mostram o que falta compensar.
+ if(method!=='point'){
+  const pool=method==='standard'?STANDARD_ARRAY:rollPool;
+  const available=pool.filter(v=>v===newScore).length;
+  const used=ABILITY_CODES.filter(k=>k!==code&&abilityScores[k]===newScore).length;
+  if(used>=available){
+   $('statStatus').textContent='O valor '+newScore+' já está atribuído. Liberta-o primeiro noutro atributo.';
+   return;
+  }
+ }
+ // Só este atributo muda. Um valor antigo regressa ao conjunto disponível.
  abilityScores={...abilityScores,[code]:newScore};
  abilityTouched=true;
  lastAbilityChange={code,old,value:newScore};
- showAbilityControls();
  update();
 }
 function resetAbilityRecommendation(){
@@ -281,7 +334,6 @@ $('rollAbilities').addEventListener('click',()=>{
  if(rollPool.length&&(!confirm('Voltar a lançar os seis atributos? Os resultados anteriores serão substituídos.')))return;
  generateRolls();
 });
-showAbilityControls();
 $('bonusMode').value=existing?.modoBonus==='triple'?'triple':'dual';
 let chosen=Array.isArray(existing?.periciasClasse)?[...existing.periciasClasse]:[];
 let speciesSelected=existing?.periciaEspecie||'';
@@ -346,18 +398,17 @@ function update(){
   const diff=assignmentDifference();
   const extra=diff.excess.length?diff.excess.join(', '):'nenhum';
   const missing=diff.missing.length?diff.missing.join(', '):'nenhum';
-  current=6-diff.missing.length;maximum=6;
-  if(diff.excess.length){
-   budget.textContent='Valores repetidos ou em excesso: '+extra+' | Valores por atribuir: '+missing+
-    '. Corrige manualmente os atributos, sem trocas automáticas.';
+   current=6-diff.missing.length;maximum=6;
+  if(diff.excess.length||diff.missing.length){
+   budget.textContent='Valores em excesso: '+extra+' | Por atribuir: '+missing+'.';
    budget.classList.add('overspent');
-   $('statStatus').textContent='Existem valores repetidos e valores em falta. Escolhe os valores certos nos outros atributos.';
+   $('statStatus').textContent=diff.missing.length
+      ?'Atribui os '+diff.missing.length+' valor(es) que faltam antes de guardar.'
+      :'Corrige os valores repetidos antes de guardar.';
   }else{
-   budget.textContent=method==='standard'?
-    'Array padrão completo: 15, 14, 13, 12, 10 e 8 (cada um exatamente uma vez).':
-    'Os seis resultados foram atribuídos corretamente, sem valores em falta.';
+   budget.textContent='';
    budget.classList.add('available');
-   $('statStatus').textContent=method==='standard'?'Array padrão válido.':'Atribuição dos dados válida.';
+   $('statStatus').textContent='Os seis atributos estão corretamente atribuídos.';
   }
  }
  $('statStatus').classList.toggle('error',!abilitiesValid);
@@ -369,7 +420,7 @@ function update(){
   const delta=lastAbilityChange.value-lastAbilityChange.old;
   note.hidden=false;
   note.textContent=ABILITY_LABELS[lastAbilityChange.code]+': '+
-    lastAbilityChange.old+' → '+lastAbilityChange.value+'. Os outros atributos não mudaram.';
+    (lastAbilityChange.old??'—')+' → '+lastAbilityChange.value+'. Os outros atributos não mudaram.';
  }else{note.hidden=true;note.textContent=''}
  indicator.style.width=Math.min(100,Math.max(0,100*current/maximum))+'%';
  indicator.classList.toggle('overspent',!abilitiesValid);
@@ -388,6 +439,7 @@ function update(){
    }
   }catch(e){$('finalStats').textContent=e.message;abilitiesValid=false}
  }else $('finalStats').textContent='Corrige os atributos acima para calcular os valores finais com o antecedente.';
+ showAbilityControls();
  $('start').disabled=(!abilitiesValid||chosen.length!==cls.count||(options.length>0&&!speciesSelected)|| (!!editId&&!existing));
 }
 for(const id of ['background','cls','species','bonusMode','bonusFirst','bonusSecond'])$(id).addEventListener('change',()=>{
