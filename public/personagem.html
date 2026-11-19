@@ -10,6 +10,16 @@ button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8
 .notice{color:#e3c28c;min-height:22px}.muted{color:#bbc9da;font-size:13px}.success{color:#bce1be}.warn{color:#f4c47b}
 #skills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.skill{display:flex;flex-direction:row;align-items:center;gap:9px;border:1px solid #435a71;padding:11px;background:#111f30;border-radius:8px;cursor:pointer}.skill input{width:18px;height:18px;accent-color:#cb9f57}.skill:has(input:disabled){opacity:.7;cursor:default}
 .summary{padding:12px;border:1px solid #74613d;background:#2b2c2f;border-radius:9px;margin:10px 0}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row>*{flex:1}
+.ability-method-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:10px;align-items:end;margin:16px 0}
+.ability-method-grid button{min-height:44px;padding:9px 12px}
+button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
+.abilities label{position:relative}
+.abilities select{font-size:18px;font-weight:700;color:#f2ce96}
+.ability-note{font-size:12px;color:#b8c8d6;min-height:16px}
+#abilityBudget{font-size:14px}
+#statStatus.error{color:#f1aa9c}
+@media(max-width:750px){.ability-method-grid{grid-template-columns:1fr}}
+
 @media(max-width:700px){.grid,.abilities,#skills{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:440px){.grid,.abilities,#skills{grid-template-columns:1fr}}
 </style></head><body><main>
@@ -21,8 +31,18 @@ button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8
 <label>Classe<select id="cls"></select></label>
 <label>Antecedente (SRD)<select id="background"></select></label>
 </div><p class="muted">O SRD gratuito disponibiliza quatro antecedentes nesta implementação. Outros antecedentes necessitam de regras próprias antes de poderem ser validados.</p></div>
-<div class="panel"><h2>2. Pontuações base dos atributos</h2><p class="muted">Usa os valores <strong>15, 14, 13, 12, 10 e 8</strong>, cada um exatamente uma vez. Os aumentos do antecedente são aplicados abaixo.</p>
-<div id="abilities" class="abilities"></div><p id="statStatus" class="notice"></p>
+<div class="panel"><h2>2. Atributos — método de criação</h2>
+<p class="muted">O limite é aplicado <strong>antes</strong> dos bónus do antecedente. Recomendações por classe: indicam as prioridades, mas podes trocar os valores.</p>
+<div class="ability-method-grid">
+<label>Método<select id="abilityMethod"><option value="point">Compra de pontos (27 pontos)</option><option value="standard">Array padrão (15, 14, 13, 12, 10, 8)</option><option value="rolled">Dados (4d6, descartando o menor)</option></select></label>
+<button type="button" id="suggestAbilities" class="secondary">Distribuição recomendada para a classe</button>
+<button type="button" id="rollAbilities" class="secondary" hidden>🎲 Gerar seis valores</button>
+</div>
+<p id="methodDescription" class="muted"></p>
+<div id="dicePool" class="summary" hidden></div>
+<div id="abilities" class="abilities"></div>
+<p id="statStatus" class="notice" role="status"></p>
+<p id="abilityBudget" class="summary"></p>
 <h2>Aumentos do antecedente</h2><p id="backgroundRules" class="muted"></p>
 <div class="grid"><label>Distribuição<select id="bonusMode"><option value="dual">+2 a um atributo e +1 a outro</option><option value="triple">+1 aos três atributos</option></select></label><div class="grid" id="bonusDual"><label>+2 em<select id="bonusFirst"></select></label><label>+1 em<select id="bonusSecond"></select></label></div></div>
 <p id="finalStats" class="summary"></p></div>
@@ -39,8 +59,8 @@ button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8
 <div class="row"><button id="start">Guardar personagem e escolher campanha</button><a href="/personagens.html">Cancelar</a></div><p id="notice" class="notice" role="status"></p></div>
 </main>
 <script type="module">
-import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
-import {initialSavingThrows} from '/rules-2024.mjs';
+import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,POINT_BUDGET,POINT_COSTS,ABILITY_METHODS,CLASS_STANDARD_ARRAY,pointCostTotal,validateAbilityScores,recommendedAbilities,rollAbilityPool,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
+import {initialSavingThrows,rollDie} from '/rules-2024.mjs';
 import {requireLogin} from '/auth-client.mjs';
 import {restorePlayerState,syncPlayerState} from '/cloud-sync.mjs';
 if(await requireLogin()){try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}}
@@ -61,18 +81,105 @@ if(existing?.antecedente&&!BACKGROUNDS[existing.antecedente]){
 }
 for(const name of Object.keys(BACKGROUNDS)){const op=document.createElement('option');op.value=name;op.textContent=name;$('background').append(op)}
 $('background').value=existing?.antecedente?(BACKGROUNDS[existing.antecedente]?existing.antecedente:''):'Sábio';
-const base=(existing?.atributosBase&&Object.values(existing.atributosBase).every(Number.isFinite))
- ?existing.atributosBase:existing?.atributos&&STANDARD_ARRAY.every(n=>Object.values(existing.atributos).includes(n))?existing.atributos:{str:8,dex:13,con:12,int:15,wis:10,cha:14};
-for(const [i,code] of ABILITY_CODES.entries()){
- const label=document.createElement('label');label.textContent=ABILITY_LABELS[code];
- const sel=document.createElement('select');sel.id='ab-'+code;
- for(const value of [8,10,12,13,14,15]){const op=document.createElement('option');op.value=value;op.textContent=value;sel.append(op)}
- sel.value=String(base[code]??[8,13,12,15,10,14][i]);sel.onchange=update;label.append(sel);$('abilities').append(label);
+// A distribuição é sempre guardada em separado dos atributos com bónus de origem.
+const initialMethod=ABILITY_METHODS.includes(existing?.metodoAtributos)?existing.metodoAtributos:
+ 'standard';
+let method=existing?initialMethod:'point';
+let rollPool=Array.isArray(existing?.valoresRolados)?[...existing.valoresRolados]:[];
+let rollDetails=Array.isArray(existing?.detalhesRolagem)?[...existing.detalhesRolagem]:[];
+let abilityScores=null,abilityTouched=false,bonusSaved=!!existing,initialWasInvalid=false;
+const candidate=existing?.atributosBase||(existing?.atributos||null);
+try{
+ if(!candidate)throw Error('Sem valores anteriores');
+ validateAbilityScores(candidate,method,rollPool);
+ abilityScores=Object.fromEntries(ABILITY_CODES.map(k=>[k,Number(candidate[k])]));
+}catch{
+ initialWasInvalid=!!existing;
+ method='point';rollPool=[];rollDetails=[];
+ abilityScores=recommendedAbilities($('cls').value,'point');
 }
+$('abilityMethod').value=method;
+for(const code of ABILITY_CODES){
+ const label=document.createElement('label');label.textContent=ABILITY_LABELS[code];
+ const select=document.createElement('select');select.id='ab-'+code;
+ const hint=document.createElement('small');hint.className='ability-note';hint.id='ab-hint-'+code;
+ label.append(select,hint);$('abilities').append(label);
+ select.addEventListener('change',()=>changeAbility(code,Number(select.value)));
+}
+function currentBase(){return {...abilityScores}}
+function methodChoices(){
+ return method==='point'?[8,9,10,11,12,13,14,15]:
+ method==='standard'?[...STANDARD_ARRAY]:[...new Set(rollPool)].sort((a,b)=>a-b);
+}
+function showAbilityControls(){
+ const options=methodChoices();
+ for(const code of ABILITY_CODES){
+  const sel=$('ab-'+code);
+  const value=abilityScores[code];
+  sel.replaceChildren();
+  for(const score of options){
+   const opt=document.createElement('option');
+   opt.value=String(score);
+   opt.textContent=method==='point'?score+' — '+POINT_COSTS[score]+' pontos':String(score);
+   sel.append(opt);
+  }
+  sel.value=String(value);
+  $('ab-hint-'+code).textContent=method==='point'?'Custo: '+POINT_COSTS[value]+' pontos':'';
+ }
+ $('rollAbilities').hidden=method!=='rolled';
+ $('dicePool').hidden=method!=='rolled';
+ $('methodDescription').textContent=method==='point'
+  ?'Cada atributo começa em 8. Compra aumentos com até 27 pontos (8 custa 0; 15 custa 9). Para melhorar outro atributo, reduz primeiro os restantes.'
+  :method==='standard'
+  ?'Usa cada valor do array padrão uma vez. Se escolheres um valor que já pertence a outro atributo, o criador troca-os automaticamente.'
+  :'Os seis valores saem de seis lançamentos de 4d6, descartando o dado mais baixo. Podes redistribuir os valores, sem os alterar.';
+ if(method==='rolled'){
+  $('dicePool').textContent='Resultados disponíveis: '+rollPool.join(' · ')+
+    (rollDetails.length?' | Lançamentos: '+rollDetails.map(d=>d.dice.join(',')+' → '+d.value).join(' ; '):'');
+ }
+}
+function changeAbility(code,newScore){
+ const old=abilityScores[code];
+ if(newScore===old)return;
+ const prospective={...abilityScores,[code]:newScore};
+ if(method==='point'){
+  try{
+   if(pointCostTotal(prospective)>POINT_BUDGET)throw Error('Não tens pontos suficientes. Reduz primeiro outro atributo.');
+   abilityScores=prospective;abilityTouched=true;
+  }catch(e){$('statStatus').textContent=e.message;$('statStatus').classList.add('error');showAbilityControls();return}
+ }else{
+  // Troca o valor com outro atributo, para manter exatamente o conjunto permitido.
+  const other=ABILITY_CODES.find(k=>k!==code&&abilityScores[k]===newScore);
+  if(!other){showAbilityControls();return}
+  abilityScores={...abilityScores,[code]:newScore,[other]:old};abilityTouched=true;
+ }
+ showAbilityControls();update();
+}
+function resetAbilityRecommendation(){
+ if(method==='rolled'&&rollPool.length!==6)generateRolls();
+ abilityScores=recommendedAbilities($('cls').value,method,rollPool);
+ abilityTouched=false;showAbilityControls();update();
+}
+function generateRolls(){
+ const generated=rollAbilityPool(()=>rollDie(6));
+ rollPool=generated.values;rollDetails=generated.rolls;
+ abilityScores=recommendedAbilities($('cls').value,'rolled',rollPool);
+ abilityTouched=false;showAbilityControls();update();
+}
+$('abilityMethod').addEventListener('change',()=>{
+ method=$('abilityMethod').value;
+ if(method==='rolled'){if(rollPool.length!==6)generateRolls();else resetAbilityRecommendation()}
+ else resetAbilityRecommendation();
+});
+$('suggestAbilities').addEventListener('click',resetAbilityRecommendation);
+$('rollAbilities').addEventListener('click',()=>{
+ if(rollPool.length&&(!confirm('Voltar a lançar os seis atributos? Os resultados anteriores serão substituídos.')))return;
+ generateRolls();
+});
+showAbilityControls();
 $('bonusMode').value=existing?.modoBonus==='triple'?'triple':'dual';
 let chosen=Array.isArray(existing?.periciasClasse)?[...existing.periciasClasse]:[];
 let speciesSelected=existing?.periciaEspecie||'';
-function currentBase(){return Object.fromEntries(ABILITY_CODES.map(k=>[k,Number($('ab-'+k).value)]))}
 function fillSelect(el,entries,wanted){
  el.replaceChildren();for(const [value,label] of entries){const opt=document.createElement('option');opt.value=value;opt.textContent=label;el.append(opt)}
  if(entries.some(([k])=>k===wanted))el.value=wanted;
