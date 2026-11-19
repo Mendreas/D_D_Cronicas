@@ -15,6 +15,16 @@ button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8
 button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 .abilities label{position:relative}
 .abilities select{font-size:18px;font-weight:700;color:#f2ce96}
+.abilities select.changed-ability{outline:2px solid #d7a453;outline-offset:2px}
+.abilities select.invalid-ability{border-color:#e29385;color:#ffd4c9}
+.ability-note.negative{color:#9ec8b3}
+.ability-note.positive{color:#f1cc85}
+.budget-track{height:12px;border:1px solid #687689;border-radius:12px;background:#0c1723;overflow:hidden;margin:8px 0 13px}
+.budget-fill{height:100%;background:linear-gradient(90deg,#537c74,#a3bf89);transition:width .12s ease}
+.budget-fill.overspent{background:#d07a65}
+#abilityBudget.overspent{color:#ffd4ca;border-color:#bd6e62;background:#3b2729}
+#abilityBudget.available{color:#dfefb5;border-color:#6e9169}
+#lastAbilityChange{margin:8px 0 0;color:#efc18a}
 .ability-note{font-size:12px;color:#b8c8d6;min-height:16px}
 #abilityBudget{font-size:14px}
 #statStatus.error{color:#f1aa9c}
@@ -32,9 +42,9 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 <label>Antecedente (SRD)<select id="background"></select></label>
 </div><p class="muted">O SRD gratuito disponibiliza quatro antecedentes nesta implementação. Outros antecedentes necessitam de regras próprias antes de poderem ser validados.</p></div>
 <div class="panel"><h2>2. Atributos — método de criação</h2>
-<p class="muted">O limite é aplicado <strong>antes</strong> dos bónus do antecedente. Recomendações por classe: indicam as prioridades, mas podes trocar os valores.</p>
+<p class="muted">Escolhe um método para definir os seis atributos. Na distribuição livre, decides exatamente onde colocas os pontos: <strong>nenhum outro atributo muda automaticamente</strong>. Os bónus do antecedente são aplicados depois.</p>
 <div class="ability-method-grid">
-<label>Método<select id="abilityMethod"><option value="point">Compra de pontos (27 pontos)</option><option value="standard">Array padrão (15, 14, 13, 12, 10, 8)</option><option value="rolled">Dados (4d6, descartando o menor)</option></select></label>
+<label>Método<select id="abilityMethod"><option value="free">Distribuição livre — 66 pontos (personalizada)</option><option value="point">Compra de pontos (27 pontos — D&amp;D oficial)</option><option value="standard">Array padrão (15, 14, 13, 12, 10, 8)</option><option value="rolled">Dados (4d6, descartando o menor)</option></select></label>
 <button type="button" id="suggestAbilities" class="secondary">Distribuição recomendada para a classe</button>
 <button type="button" id="rollAbilities" class="secondary" hidden>🎲 Gerar seis valores</button>
 </div>
@@ -42,7 +52,9 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 <div id="dicePool" class="summary" hidden></div>
 <div id="abilities" class="abilities"></div>
 <p id="statStatus" class="notice" role="status"></p>
-<p id="abilityBudget" class="summary"></p>
+<p id="abilityBudget" class="summary" role="status"></p>
+<div class="budget-track" aria-hidden="true"><div id="budgetFill" class="budget-fill"></div></div>
+<p id="lastAbilityChange" class="muted" hidden></p>
 <h2>Aumentos do antecedente</h2><p id="backgroundRules" class="muted"></p>
 <div class="grid"><label>Distribuição<select id="bonusMode"><option value="dual">+2 a um atributo e +1 a outro</option><option value="triple">+1 aos três atributos</option></select></label><div class="grid" id="bonusDual"><label>+2 em<select id="bonusFirst"></select></label><label>+1 em<select id="bonusSecond"></select></label></div></div>
 <p id="finalStats" class="summary"></p></div>
@@ -59,7 +71,7 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 <div class="row"><button id="start">Guardar personagem e escolher campanha</button><a href="/personagens.html">Cancelar</a></div><p id="notice" class="notice" role="status"></p></div>
 </main>
 <script type="module">
-import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,POINT_BUDGET,POINT_COSTS,ABILITY_METHODS,CLASS_STANDARD_ARRAY,pointCostTotal,validateAbilityScores,recommendedAbilities,rollAbilityPool,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
+import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,POINT_BUDGET,POINT_COSTS,FREE_BUDGET,FREE_MIN,FREE_MAX,freeAbilityTotal,ABILITY_METHODS,CLASS_STANDARD_ARRAY,pointCostTotal,validateAbilityScores,recommendedAbilities,rollAbilityPool,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
 import {initialSavingThrows,rollDie} from '/rules-2024.mjs';
 import {requireLogin} from '/auth-client.mjs';
 import {restorePlayerState,syncPlayerState} from '/cloud-sync.mjs';
@@ -82,12 +94,12 @@ if(existing?.antecedente&&!BACKGROUNDS[existing.antecedente]){
 for(const name of Object.keys(BACKGROUNDS)){const op=document.createElement('option');op.value=name;op.textContent=name;$('background').append(op)}
 $('background').value=existing?.antecedente?(BACKGROUNDS[existing.antecedente]?existing.antecedente:''):'Sábio';
 // A distribuição é sempre guardada em separado dos atributos com bónus de origem.
-const initialMethod=ABILITY_METHODS.includes(existing?.metodoAtributos)?existing.metodoAtributos:
- 'standard';
-let method=existing?initialMethod:'point';
+const initialMethod=ABILITY_METHODS.includes(existing?.metodoAtributos)?existing.metodoAtributos:'free';
+let method=existing?initialMethod:'free';
 let rollPool=Array.isArray(existing?.valoresRolados)?[...existing.valoresRolados]:[];
 let rollDetails=Array.isArray(existing?.detalhesRolagem)?[...existing.detalhesRolagem]:[];
 let abilityScores=null,abilityTouched=false,bonusSaved=!!existing,initialWasInvalid=false;
+let lastAbilityChange=null;
 const candidate=existing?.atributosBase||(existing?.atributos||null);
 try{
  if(!candidate)throw Error('Sem valores anteriores');
@@ -95,8 +107,9 @@ try{
  abilityScores=Object.fromEntries(ABILITY_CODES.map(k=>[k,Number(candidate[k])]));
 }catch{
  initialWasInvalid=!!existing;
- method='point';rollPool=[];rollDetails=[];
- abilityScores=recommendedAbilities($('cls').value,'point');
+ method='free';rollPool=[];rollDetails=[];
+ abilityScores=existing?recommendedAbilities($('cls').value,'free'):
+  Object.fromEntries(ABILITY_CODES.map(code=>[code,11]));
 }
 $('abilityMethod').value=method;
 for(const code of ABILITY_CODES){
