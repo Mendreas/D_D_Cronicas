@@ -271,24 +271,73 @@ function update(){
  $('skillStatus').textContent='Escolhas da classe: '+chosen.length+' / '+cls.count+'. Só podes selecionar '+cls.count+' perícias desta lista.';
  $('totalSkills').textContent='Total previsto: '+(cls.count+2+(options.length?1:0))+' perícias sem duplicação (antecedente + classe'+(options.length?' + espécie':'')+').';
  let abilitiesValid=true;
- try{
-  validateAbilityScores(currentBase(),method,rollPool);
-  $('statStatus').classList.remove('error');
-  $('statStatus').textContent=method==='point'?'Compra de pontos válida.':
-    method==='standard'?'Array padrão válido: cada valor usado exatamente uma vez.':
-    'Valores gerados por dados válidos; podes trocá-los entre atributos.';
- }catch(e){abilitiesValid=false;$('statStatus').textContent=e.message;$('statStatus').classList.add('error')}
+ let validationMessage='';
+ try{validateAbilityScores(currentBase(),method,rollPool)}
+ catch(e){abilitiesValid=false;validationMessage=e.message}
  const sum=ABILITY_CODES.reduce((n,k)=>n+abilityScores[k],0);
- if(method==='point'){
-  let cost=0;try{cost=pointCostTotal(abilityScores)}catch{}
-  $('abilityBudget').textContent='Pontos utilizados: '+cost+' / '+POINT_BUDGET+
-   ' — Disponíveis: '+(POINT_BUDGET-cost)+'. Soma dos seis atributos: '+sum+' (a soma não substitui os custos por atributo).';
- }else if(method==='standard')$('abilityBudget').textContent='Array padrão: 15 + 14 + 13 + 12 + 10 + 8 = 72 pontos base. Os valores não podem ser duplicados.';
- else $('abilityBudget').textContent='Dados: '+rollPool.join(' + ')+' = '+sum+' pontos base, determinados pelo lançamento de 4d6 (descarta-se o menor).';
- try{
-  const total=abilityIncrease(currentBase(),$('background').value,$('bonusMode').value,$('bonusFirst').value,$('bonusSecond').value,method,rollPool);
-  $('finalStats').textContent='Atributos finais após o antecedente: '+ABILITY_CODES.map(k=>ABILITY_LABELS[k]+' '+total[k]).join(' · ');
- }catch(e){$('finalStats').textContent=e.message;abilitiesValid=false}
+ const budget=$('abilityBudget'),indicator=$('budgetFill'),note=$('lastAbilityChange');
+ let current=0,maximum=0;
+ budget.classList.remove('overspent','available');
+ if(method==='free'){
+  current=sum;maximum=FREE_BUDGET;
+  const available=FREE_BUDGET-sum;
+  budget.textContent=available<0
+   ?'PONTOS A MAIS: '+Math.abs(available)+' | Total: '+sum+' / '+FREE_BUDGET+
+    '. Reduz '+Math.abs(available)+' ponto(s) noutro(s) atributo(s). Nenhum valor será modificado automaticamente.'
+   :'Total: '+sum+' / '+FREE_BUDGET+' | '+available+' ponto(s) por distribuir.';
+  budget.classList.add(available<0?'overspent':'available');
+  $('statStatus').textContent=available<0?
+   'Distribuição inválida: ultrapassaste o limite. Altera manualmente os outros atributos.':
+   'Distribuição válida. Podes alterar qualquer atributo sem mudar os restantes.';
+ }else if(method==='point'){
+  current=pointCostTotal(abilityScores);maximum=POINT_BUDGET;
+  const available=POINT_BUDGET-current;
+  budget.textContent='Compra de pontos (D&D): '+current+' / '+POINT_BUDGET+
+    (available<0?' | Excedeste '+Math.abs(available)+' ponto(s). Reduz manualmente outros atributos.':
+      ' | '+available+' ponto(s) disponíveis.');
+  budget.classList.add(available<0?'overspent':'available');
+  $('statStatus').textContent=available<0?
+    'A compra excede o orçamento. Não podes guardar até corrigires.':
+    'Compra de pontos válida; nenhuma outra característica é alterada automaticamente.';
+ }else{
+  const diff=assignmentDifference();
+  const extra=diff.excess.length?diff.excess.join(', '):'nenhum';
+  const missing=diff.missing.length?diff.missing.join(', '):'nenhum';
+  current=6-diff.missing.length;maximum=6;
+  if(diff.excess.length){
+   budget.textContent='Valores repetidos ou em excesso: '+extra+' | Valores por atribuir: '+missing+
+    '. Corrige manualmente os atributos, sem trocas automáticas.';
+   budget.classList.add('overspent');
+   $('statStatus').textContent='Existem valores repetidos e valores em falta. Escolhe os valores certos nos outros atributos.';
+  }else{
+   budget.textContent=method==='standard'?
+    'Array padrão completo: 15, 14, 13, 12, 10 e 8 (cada um exatamente uma vez).':
+    'Os seis resultados foram atribuídos corretamente, sem valores em falta.';
+   budget.classList.add('available');
+   $('statStatus').textContent=method==='standard'?'Array padrão válido.':'Atribuição dos dados válida.';
+  }
+ }
+ $('statStatus').classList.toggle('error',!abilitiesValid);
+ if(validationMessage&&method!=='free'&&method!=='point'){
+  // A informação sobre valores repetidos, em falta, é mais útil do que o erro genérico.
+  if(!assignmentDifference().excess.length)$('statStatus').textContent=validationMessage;
+ }
+ if(lastAbilityChange){
+  const delta=lastAbilityChange.value-lastAbilityChange.old;
+  note.hidden=false;
+  note.textContent='Alteraste apenas '+ABILITY_LABELS[lastAbilityChange.code]+': '+
+    lastAbilityChange.old+' → '+lastAbilityChange.value+
+    ' ('+(delta>=0?'+':'')+delta+'). Os restantes cinco atributos mantiveram os seus valores.';
+ }else{note.hidden=true;note.textContent=''}
+ indicator.style.width=Math.min(100,Math.max(0,100*current/maximum))+'%';
+ indicator.classList.toggle('overspent',!abilitiesValid);
+ if(abilitiesValid){
+  try{
+   const total=abilityIncrease(currentBase(),$('background').value,$('bonusMode').value,$('bonusFirst').value,$('bonusSecond').value,method,rollPool);
+   $('finalStats').textContent='Atributos finais após o antecedente: '+
+    ABILITY_CODES.map(k=>ABILITY_LABELS[k]+' '+total[k]).join(' · ');
+  }catch(e){$('finalStats').textContent=e.message;abilitiesValid=false}
+ }else $('finalStats').textContent='Corrige os atributos acima para calcular os valores finais com o antecedente.';
  $('start').disabled=(!abilitiesValid||chosen.length!==cls.count||(options.length>0&&!speciesSelected)|| (!!editId&&!existing));
 }
 for(const id of ['background','cls','species','bonusMode','bonusFirst','bonusSecond'])$(id).addEventListener('change',()=>{
@@ -296,11 +345,9 @@ for(const id of ['background','cls','species','bonusMode','bonusFirst','bonusSec
   chosen=[];bonusSaved=false;
   $('bonusFirst').value='';$('bonusSecond').value='';
  }
- if(id==='cls'&&!abilityTouched){
-  abilityScores=recommendedAbilities($('cls').value,method,rollPool);
-  showAbilityControls();
- }else if(id==='cls'){
-  $('notice').textContent='A distribuição personalizada foi mantida. Podes aplicar a recomendação da nova classe no botão acima.';
+ if(id==='cls'){
+  // A seleção de classe não redistribui atributos por iniciativa do programa.
+  $('notice').textContent='Mantive os seis atributos. Para aplicar uma distribuição sugerida para esta classe, usa o botão de recomendação.';
  }
  if(id==='species'||id==='background')speciesSelected='';
  if(id==='bonusFirst'||id==='bonusSecond')bonusSaved=false;
