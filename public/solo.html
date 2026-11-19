@@ -81,7 +81,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa">Mapa</button><button id="saveBtn">Guardar</button><button id="logoutBtn" class="secondary" title="Terminar sessão Supabase">Sair</button></nav>
 <div id="campaignTitle">Aventura solo</div></header>
 <main>
-<div id="characterValidation" class="access" hidden><span>A ficha desta personagem é anterior à validação SRD 5.2.1. Tens de rever as escolhas de perícias antes de continuar.</span> <a id="validateCharacter" href="/personagens.html">Rever ficha agora</a></div>
+<div id="characterValidation" class="access" hidden><span>A ficha precisa de revisão para cumprir o SRD 5.2.1. Confirma os atributos, o método oficial de criação e as perícias antes de continuar.</span> <a id="validateCharacter" href="/personagens.html">Rever ficha agora</a></div>
 <div id="accessBar" class="access" hidden><span>Para jogar, inicia sessão na tua conta Supabase.</span> <a href="/login.html">Entrar</a></div>
 <div class="bar"><h1 id="sceneTitle">A tua aventura</h1><small id="partyStatus">A preparar o grupo...</small></div>
 <div class="panels">
@@ -100,6 +100,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <div id="modalBackdrop" class="modal-backdrop" hidden role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button class="secondary" id="modalClose">Fechar ✕</button></div><div id="modalBody"></div></div></div>
 <script type="module">
 import {abilityCheck,proficiencyBonus,modifier,SKILLS_2024,skillBonus,savingThrowBonus,classHitDie,spellAbility,rollDice,initialSavingThrows} from '/rules-2024.mjs';
+import {ABILITY_METHODS,validateAbilityScores} from '/criacao-regras.mjs';
 import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
 import {renderCampaignMap} from '/mapas.mjs';
 import {restorePlayerState,queuePlayerSync} from '/cloud-sync.mjs';
@@ -245,8 +246,12 @@ const placeName=s=>locationNames[(game?.campaignId||'')+'|'+s]||
  (s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/gu,x=>x.toUpperCase());
 function setNotice(t){$('notice').textContent=t}
 function showAccess(){ $('accessBar').hidden=loggedIn;if(!loggedIn)setNotice('Inicia sessão para o Mestre de Jogo continuar a aventura.');}
+function characterFollowsSRD(){
+ if(!char?.criacaoValidada||!ABILITY_METHODS.includes(char.metodoAtributos))return false;
+ try{validateAbilityScores(char.atributosBase,char.metodoAtributos,char.valoresRolados||[]);return true}catch{return false}
+}
 function showCharacterValidation(){
- const missing=!!char&&!char.criacaoValidada;
+ const missing=!!char&&!characterFollowsSRD();
  $('characterValidation').hidden=!missing;
  $('validateCharacter').href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||'');
 }
@@ -288,7 +293,7 @@ function render(){
  }
  root.scrollTop=root.scrollHeight;
  renderChoices();
- $('send').disabled=busy||!loggedIn||!char?.criacaoValidada||!messages.some(m=>m.role==='assistant');
+ $('send').disabled=busy||!loggedIn||!characterFollowsSRD()||!messages.some(m=>m.role==='assistant');
  $('actionImage').disabled=busy||artBusy||!loggedIn||!scene||!messages.some(m=>m.role==='assistant');
  $('locationTitle').textContent='Local: '+placeName(scene);
 }
@@ -326,7 +331,7 @@ function renderChoices(){
   const btn=document.createElement('button');btn.type='button';btn.className='choice';
   const num=document.createElement('span');num.className='choice-number';num.textContent=String(index+1);
   const label=document.createElement('span');label.textContent=option;btn.append(num,label);
-  btn.disabled=busy||!loggedIn||!char?.criacaoValidada;
+  btn.disabled=busy||!loggedIn||!characterFollowsSRD();
   btn.onclick=()=>{if(busy||!loggedIn)return;const text=option.trim();if(!text)return;
     $('action').value='';void runTurn(text);
   };
@@ -471,7 +476,7 @@ function previousAdventures(){
 }
 async function runTurn(action,{initial=false}={}){
  if(busy)return;
- if(!char?.criacaoValidada){showCharacterValidation();setNotice('Revê e valida a ficha antes de prosseguir a aventura.');return}
+ if(!characterFollowsSRD()){showCharacterValidation();setNotice('Revê os atributos segundo um dos três métodos oficiais antes de continuar a aventura.');return}
  busy=true;$('send').disabled=true;
  const previous=messages.slice();
  messages.push({role:'user',content:action,internal:initial});
