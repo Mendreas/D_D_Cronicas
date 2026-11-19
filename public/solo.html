@@ -218,7 +218,7 @@ if(game?.character&&sharedProfile){
  // A revisão formal da criação prevalece sobre perícias/atributos copiados
  // de um save antigo, mesmo que nível e experiência não tenham mudado.
  if(sharedProfile.criacaoValidada&&Number(sharedProfile.creationRevision||0)>Number(localHero.creationRevision||0)){
-  const keys=['raca','classe','antecedente','atributos','atributosBase','modoBonus','bonusPrincipal','bonusSecundario','periciasClasse','periciaEspecie','periciasProficientes','salvaguardasProficientes','talentoOrigem','profFerramenta','criacaoValidada','creationRevision'];
+  const keys=['raca','classe','antecedente','atributos','atributosBase','modoBonus','bonusPrincipal','bonusSecundario','metodoAtributos','valoresRolados','detalhesRolagem','periciasClasse','periciaEspecie','periciasProficientes','salvaguardasProficientes','talentoOrigem','profFerramenta','criacaoValidada','creationRevision'];
   for(const key of keys)game.character[key]=sharedProfile[key];
  }
  // O inventário e os marcos já alcançados pertencem à personagem, não ao save.
@@ -568,6 +568,8 @@ function showSheet(){
    score.append(make('small',name),make('strong',value+' ('+signed(modifier(value))+')'));abilities.append(score);
   }
   root.append(make('h3','Atributos'),abilities);
+  const methodNames={point:'Compra de pontos (27)',standard:'Array padrão',rolled:'Lançamento de 4d6'};
+  root.append(make('p','Método de criação: '+(methodNames[char.metodoAtributos]||'Revisão de ficha pendente')+'. Os atributos de base são revistos no criador; os aumentos de nível seguem as respetivas regras.','helper'));
   char.salvaguardasProficientes=Array.isArray(char.salvaguardasProficientes)?char.salvaguardasProficientes:initialSavingThrows(char.classe);
   char.periciasProficientes=Array.isArray(char.periciasProficientes)?char.periciasProficientes:[];
   char.periciasEspecialistas=Array.isArray(char.periciasEspecialistas)?char.periciasEspecialistas:[];
