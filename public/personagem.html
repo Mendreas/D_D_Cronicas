@@ -13,6 +13,19 @@ button{background:#b58c50;color:#151b23;border:1px solid #b58c50;border-radius:8
 .ability-method-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:10px;align-items:end;margin:16px 0}
 .ability-method-grid button{min-height:44px;padding:9px 12px}
 button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
+.abilities .ability-card{display:flex;flex-direction:column;align-items:center;justify-content:space-between;min-height:163px;gap:5px;padding:12px 7px;border:1px solid #526479;border-radius:13px;background:linear-gradient(180deg,#223044,#142334);text-align:center;color:#f4e9dc}
+.ability-card .ability-name{font-size:14px;letter-spacing:.03em;color:#efc889;font-weight:700}
+.ability-card .ability-mod-caption{font-size:10px;letter-spacing:.08em;color:#b7c9d5;text-transform:uppercase}
+.ability-card .ability-mod{font-size:17px;font-weight:700;line-height:1;color:#e8d6b2;border:1px solid #7b8895;border-radius:40px;padding:5px 14px;min-width:54px}
+.ability-card select{width:100%;max-width:115px;text-align:center;text-align-last:center;font-size:29px!important;font-weight:800;color:#ffdaa2;background:#101c2a;border:1px solid #7c8fa3;border-radius:9px;padding:4px 15px 4px 4px;min-height:43px}
+.ability-card .ability-note{display:none}
+.final-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:12px 0}
+.final-stat{padding:10px 5px;border:1px solid #586f82;border-radius:10px;background:#162536;text-align:center}
+.final-stat-label{display:block;font-size:12px;color:#becdd6}
+.final-stat-mod{display:block;font-size:14px;color:#e5ceaa;margin:5px auto}
+.final-stat-value{display:block;font-size:26px;font-weight:800;color:#f4cb88;line-height:1.15}
+@media(max-width:750px){.abilities,.final-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:440px){.abilities,.final-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .abilities label{position:relative}
 .abilities select{font-size:18px;font-weight:700;color:#f2ce96}
 .abilities select.changed-ability{outline:2px solid #d7a453;outline-offset:2px}
@@ -50,14 +63,15 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 </div>
 <p id="methodDescription" class="muted"></p>
 <div id="dicePool" class="summary" hidden></div>
+<p class="muted">Valores antes dos aumentos do antecedente. Podes modificar um atributo sem que os outros mudem.</p>
 <div id="abilities" class="abilities"></div>
 <p id="statStatus" class="notice" role="status"></p>
 <p id="abilityBudget" class="summary" role="status"></p>
-<div class="budget-track" aria-hidden="true"><div id="budgetFill" class="budget-fill"></div></div>
+<div class="budget-track" aria-hidden="true" hidden><div id="budgetFill" class="budget-fill"></div></div>
 <p id="lastAbilityChange" class="muted" hidden></p>
 <h2>Aumentos do antecedente</h2><p id="backgroundRules" class="muted"></p>
 <div class="grid"><label>Distribuição<select id="bonusMode"><option value="dual">+2 a um atributo e +1 a outro</option><option value="triple">+1 aos três atributos</option></select></label><div class="grid" id="bonusDual"><label>+2 em<select id="bonusFirst"></select></label><label>+1 em<select id="bonusSecond"></select></label></div></div>
-<p id="finalStats" class="summary"></p></div>
+<p class="muted">Atributos finais, depois dos aumentos do antecedente:</p><div id="finalStats" class="final-stats"></div></div>
 <div class="panel"><h2>3. Perícias da personagem</h2>
 <p id="backgroundSkills" class="summary"></p>
 <p id="skillStatus" class="notice"></p><div id="skills"></div>
@@ -72,7 +86,7 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 </main>
 <script type="module">
 import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,POINT_BUDGET,POINT_COSTS,ABILITY_METHODS,CLASS_STANDARD_ARRAY,pointCostTotal,validateAbilityScores,recommendedAbilities,rollAbilityPool,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
-import {initialSavingThrows,rollDie} from '/rules-2024.mjs';
+import {initialSavingThrows,rollDie,modifier} from '/rules-2024.mjs';
 import {requireLogin} from '/auth-client.mjs';
 import {restorePlayerState,syncPlayerState} from '/cloud-sync.mjs';
 if(await requireLogin()){try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}}
@@ -112,10 +126,13 @@ try{
 }
 $('abilityMethod').value=method;
 for(const code of ABILITY_CODES){
- const label=document.createElement('label');label.textContent=ABILITY_LABELS[code];
+ const label=document.createElement('label');label.className='ability-card';
+ const title=document.createElement('span');title.className='ability-name';title.textContent=ABILITY_LABELS[code];
+ const caption=document.createElement('span');caption.className='ability-mod-caption';caption.textContent='Modificador';
+ const mod=document.createElement('span');mod.className='ability-mod';mod.id='ab-mod-'+code;
  const select=document.createElement('select');select.id='ab-'+code;
  const hint=document.createElement('small');hint.className='ability-note';hint.id='ab-hint-'+code;
- label.append(select,hint);$('abilities').append(label);
+ label.append(title,caption,mod,select,hint);$('abilities').append(label);
  select.addEventListener('change',()=>changeAbility(code,Number(select.value)));
 }
 function currentBase(){return {...abilityScores}}
@@ -154,7 +171,7 @@ function showAbilityControls(){
   for(const score of options){
    const opt=document.createElement('option');
    opt.value=String(score);
-   opt.textContent=method==='point'?score+' — '+POINT_COSTS[score]+' pontos':String(score);
+   opt.textContent=String(score);
    sel.append(opt);
   }
   sel.value=String(value);
@@ -163,13 +180,13 @@ function showAbilityControls(){
    (scoreCounts.get(value)||0)>(availableCounts.get(value)||0));
   const hint=$('ab-hint-'+code);
   hint.classList.remove('positive','negative');
-  if(method==='point')hint.textContent='Custo: '+POINT_COSTS[value]+' pontos';
-  else hint.textContent='';
+  hint.textContent='';
+  $('ab-mod-'+code).textContent=(modifier(value)>=0?'+':'')+modifier(value);
  }
  $('rollAbilities').hidden=method!=='rolled';
  $('dicePool').hidden=method!=='rolled';
  $('methodDescription').textContent=method==='point'
-  ?'D&D oficial: cada atributo vai de 8 a 15 e tem um custo diferente. Tens 27 pontos de compra; se ultrapassares o limite, reduz manualmente outro atributo.'
+  ?'Escolhe os valores dos atributos entre 8 e 15. Se não conseguires aumentar um deles, diminui outro. O jogo verifica os limites oficiais automaticamente.'
   :method==='standard'
   ?'D&D oficial: distribui 15, 14, 13, 12, 10 e 8, uma vez cada. Se repetires um valor, o jogo assinala o erro e deixa-te corrigir manualmente; não faz trocas.'
   :'D&D oficial: os dados geram seis valores fixos. Atribui-os manualmente aos seis atributos sem repetir nenhum além do número de vezes obtido; o jogo não altera outros valores.';
