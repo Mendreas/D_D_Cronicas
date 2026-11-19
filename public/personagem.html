@@ -265,7 +265,7 @@ function update(){
  const budget=$('abilityBudget'),indicator=$('budgetFill'),note=$('lastAbilityChange');
  let current=0,maximum=0;
  budget.classList.remove('overspent','available');
-else if(method==='point'){
+ if(method==='point'){
   current=pointCostTotal(abilityScores);maximum=POINT_BUDGET;
   const available=POINT_BUDGET-current;
   budget.textContent='Compra de pontos (D&D): '+current+' / '+POINT_BUDGET+
