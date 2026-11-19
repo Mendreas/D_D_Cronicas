@@ -29,20 +29,82 @@ export const BACKGROUNDS={
 export const ABILITY_LABELS={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
 export const ABILITY_CODES=Object.keys(ABILITY_LABELS);
 export const STANDARD_ARRAY=[8,10,12,13,14,15];
-export function abilityIncrease(base,bg,mode,first,second){
+export const POINT_COSTS=Object.freeze({8:0,9:1,10:2,11:3,12:4,13:5,14:7,15:9});
+export const POINT_BUDGET=27;
+// Tabela "Standard Array by Class" das regras de 2024; ordem STR, DEX, CON, INT, WIS, CHA.
+export const CLASS_STANDARD_ARRAY={
+ Barbarian:[15,13,14,10,12,8],Bard:[8,14,12,13,10,15],
+ Cleric:[14,8,13,10,15,12],Druid:[8,12,14,13,15,10],
+ Fighter:[15,14,13,8,10,12],Monk:[12,15,13,10,14,8],
+ Paladin:[15,10,13,8,12,14],Ranger:[12,15,13,8,14,10],
+ Rogue:[12,15,13,14,10,8],Sorcerer:[10,13,14,8,12,15],
+ Warlock:[8,14,13,12,10,15],Wizard:[8,12,13,15,14,10]
+};
+export const ABILITY_METHODS=['point','standard','rolled'];
+export function baseValues(base){
+ return ABILITY_CODES.map(k=>Number(base?.[k]));
+}
+export function pointCostTotal(base){
+ const scores=baseValues(base);
+ if(scores.some(v=>!Number.isInteger(v)||!(v in POINT_COSTS)))
+  throw Error('Na compra de pontos, cada atributo deve estar entre 8 e 15.');
+ return scores.reduce((sum,score)=>sum+POINT_COSTS[score],0);
+}
+export function validateAbilityScores(base,method='standard',rolledPool=[]){
+ const values=baseValues(base);
+ if(values.length!==6||values.some(v=>!Number.isInteger(v)))throw Error('Cada atributo precisa de um valor inteiro.');
+ if(method==='standard'){
+  if([...values].sort((a,b)=>a-b).join(',')!==STANDARD_ARRAY.join(','))
+   throw Error('Array padrão: distribui 15, 14, 13, 12, 10 e 8, cada um uma vez.');
+ }else if(method==='point'){
+  const cost=pointCostTotal(base);
+  if(cost>POINT_BUDGET)throw Error('Compra de pontos: usaste '+cost+' dos 27 pontos disponíveis. Reduz outros atributos.');
+ }else if(method==='rolled'){
+  if(!Array.isArray(rolledPool)||rolledPool.length!==6||rolledPool.some(v=>!Number.isInteger(v)||v<3||v>18))
+   throw Error('Gera primeiro os seis atributos com 4d6, descartando o menor.');
+  if([...values].sort((a,b)=>a-b).join(',')!==[...rolledPool].sort((a,b)=>a-b).join(','))
+   throw Error('Os seis atributos devem corresponder aos resultados dos dados, sem criar valores novos.');
+ }else throw Error('Método de criação dos atributos inválido.');
+ return true;
+}
+export function recommendedAbilities(className,method='standard',rolledPool=[]){
+ const template=CLASS_STANDARD_ARRAY[className]||CLASS_STANDARD_ARRAY.Wizard;
+ let values;
+ if(method==='rolled'){
+  if(!Array.isArray(rolledPool)||rolledPool.length!==6||rolledPool.some(v=>!Number.isInteger(v)||v<3||v>18))
+   throw Error('Lança primeiro os dados para obter seis valores.');
+  const ranked=[...rolledPool].sort((a,b)=>b-a);
+  const positions=template.map((score,i)=>({score,i})).sort((a,b)=>b.score-a.score);
+  values=new Array(6);
+  positions.forEach((item,rank)=>{values[item.i]=ranked[rank]});
+ }else values=[...template]; // Também corresponde a uma compra legal de 27 pontos.
+ return Object.fromEntries(ABILITY_CODES.map((code,i)=>[code,values[i]]));
+}
+export function rollAbilityPool(d6){
+ if(typeof d6!=='function')throw Error('É necessário um lançador de d6.');
+ const rolls=Array.from({length:6},()=>{
+  const dice=Array.from({length:4},()=>Number(d6()));
+  if(dice.some(n=>!Number.isInteger(n)||n<1||n>6))throw Error('Resultado inválido num d6.');
+  const sorted=[...dice].sort((a,b)=>b-a);
+  return {dice,value:sorted[0]+sorted[1]+sorted[2]};
+ });
+ return {values:rolls.map(x=>x.value),rolls};
+}
+export function abilityIncrease(base,bg,mode,first,second,method='standard',rolledPool=[]){
  const background=BACKGROUNDS[bg];
  if(!background)throw Error('Seleciona um antecedente disponível no SRD.');
+ validateAbilityScores(base,method,rolledPool);
  const raw=Object.fromEntries(ABILITY_CODES.map(k=>[k,Number(base[k])]));
- if(STANDARD_ARRAY.some(n=>!Object.values(raw).includes(n))||new Set(Object.values(raw)).size!==6)throw Error('Atribui uma vez cada valor do array padrão: 15, 14, 13, 12, 10, 8.');
  const bonuses=Object.fromEntries(ABILITY_CODES.map(k=>[k,0]));
  if(mode==='triple'){for(const k of background.abilities)bonuses[k]=1}
- else{
-  if(!background.abilities.includes(first)||!background.abilities.includes(second)||first===second)throw Error('Seleciona duas características diferentes permitidas pelo antecedente.');
+ else if(mode==='dual'){
+  if(!background.abilities.includes(first)||!background.abilities.includes(second)||first===second)
+   throw Error('Seleciona duas características diferentes permitidas pelo antecedente.');
   bonuses[first]=2;bonuses[second]=1;
- }
+ }else throw Error('Distribuição dos aumentos do antecedente inválida.');
  return Object.fromEntries(ABILITY_CODES.map(k=>[k,Math.min(20,raw[k]+bonuses[k])]));
 }
-export function validateCreation({classe,antecedente,raca,periciasClasse,periciaEspecie,atributosBase,modoBonus,bonusPrincipal,bonusSecundario}){
+export function validateCreation({classe,antecedente,raca,periciasClasse,periciaEspecie,atributosBase,modoBonus,bonusPrincipal,bonusSecundario,metodoAtributos='standard',valoresRolados=[]}){
  const config=CLASS_SKILLS[classe],background=BACKGROUNDS[antecedente];
  if(!config)throw Error('Classe inválida.');
  if(!background)throw Error('Seleciona um dos antecedentes SRD disponíveis.');
@@ -56,6 +118,6 @@ export function validateCreation({classe,antecedente,raca,periciasClasse,pericia
   if(!available.includes(periciaEspecie)||reserved.has(periciaEspecie)||periciasClasse.includes(periciaEspecie))
    throw Error('A perícia extra da espécie tem de ser válida e diferente das restantes.');
  }else if(periciaEspecie)throw Error('Esta espécie não recebe uma perícia extra genérica.');
- const atributos=abilityIncrease(atributosBase,antecedente,modoBonus,bonusPrincipal,bonusSecundario);
+ const atributos=abilityIncrease(atributosBase,antecedente,modoBonus,bonusPrincipal,bonusSecundario,metodoAtributos,valoresRolados);
  return {atributos,periciasProficientes:[...new Set([...background.skills,...periciasClasse,...(speciesCount?[periciaEspecie]:[])])],talentoOrigem:background.feat,profFerramenta:background.tool};
 }
