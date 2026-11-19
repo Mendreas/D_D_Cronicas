@@ -8,6 +8,7 @@ create table if not exists public.game_player_state (
 );
 alter table public.game_player_state enable row level security;
 revoke all on public.game_player_state from public, anon, authenticated;
+grant select, insert, update on public.game_player_state to service_role;
 -- O acesso é feito APENAS por uma função Netlify autenticada (service role),
 -- que consulta/atualiza exclusivamente a linha do utilizador da sessão.
 create index if not exists game_player_state_updated_idx on public.game_player_state(updated_at);
