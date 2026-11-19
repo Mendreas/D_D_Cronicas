@@ -31,10 +31,6 @@ export const ABILITY_CODES=Object.keys(ABILITY_LABELS);
 export const STANDARD_ARRAY=[8,10,12,13,14,15];
 export const POINT_COSTS=Object.freeze({8:0,9:1,10:2,11:3,12:4,13:5,14:7,15:9});
 export const POINT_BUDGET=27;
-// Regra caseira pedida pelo utilizador: soma dos seis atributos base até 66.
-export const FREE_BUDGET=66;
-export const FREE_MIN=3;
-export const FREE_MAX=18;
 // Tabela "Standard Array by Class" das regras de 2024; ordem STR, DEX, CON, INT, WIS, CHA.
 export const CLASS_STANDARD_ARRAY={
  Barbarian:[15,13,14,10,12,8],Bard:[8,14,12,13,10,15],
@@ -44,15 +40,9 @@ export const CLASS_STANDARD_ARRAY={
  Rogue:[12,15,13,14,10,8],Sorcerer:[10,13,14,8,12,15],
  Warlock:[8,14,13,12,10,15],Wizard:[8,12,13,15,14,10]
 };
-export const ABILITY_METHODS=['free','point','standard','rolled'];
+export const ABILITY_METHODS=['point','standard','rolled'];
 export function baseValues(base){
  return ABILITY_CODES.map(k=>Number(base?.[k]));
-}
-export function freeAbilityTotal(base){
- const scores=baseValues(base);
- if(scores.some(v=>!Number.isInteger(v)||v<FREE_MIN||v>FREE_MAX))
-  throw Error('Distribuição livre: cada atributo deve estar entre '+FREE_MIN+' e '+FREE_MAX+'.');
- return scores.reduce((sum,value)=>sum+value,0);
 }
 export function pointCostTotal(base){
  const scores=baseValues(base);
@@ -63,10 +53,7 @@ export function pointCostTotal(base){
 export function validateAbilityScores(base,method='standard',rolledPool=[]){
  const values=baseValues(base);
  if(values.length!==6||values.some(v=>!Number.isInteger(v)))throw Error('Cada atributo precisa de um valor inteiro.');
- if(method==='free'){
-  const total=freeAbilityTotal(base);
-  if(total>FREE_BUDGET)throw Error('Distribuição livre: ultrapassaste os 66 pontos em '+(total-FREE_BUDGET)+'. Reduz outros atributos para compensar.');
- }else if(method==='standard'){
+ if(method==='standard'){
   if([...values].sort((a,b)=>a-b).join(',')!==STANDARD_ARRAY.join(','))
    throw Error('Array padrão: distribui 15, 14, 13, 12, 10 e 8, cada um uma vez.');
  }else if(method==='point'){
@@ -90,11 +77,6 @@ export function recommendedAbilities(className,method='standard',rolledPool=[]){
   const positions=template.map((score,i)=>({score,i})).sort((a,b)=>b.score-a.score);
   values=new Array(6);
   positions.forEach((item,rank)=>{values[item.i]=ranked[rank]});
- }else if(method==='free'){
-  const freeRanks=[17,14,12,9,8,6]; // Total 66; prioridades ordenadas pela classe.
-  const positions=template.map((score,i)=>({score,i})).sort((a,b)=>b.score-a.score);
-  values=new Array(6);
-  positions.forEach((item,rank)=>{values[item.i]=freeRanks[rank]});
  }else values=[...template]; // Também corresponde a uma compra legal de 27 pontos.
  return Object.fromEntries(ABILITY_CODES.map((code,i)=>[code,values[i]]));
 }
