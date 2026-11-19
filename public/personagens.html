@@ -1,10 +1,20 @@
 <!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crónicas do Véu — Personagens</title>
-<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#27344a,#101722);color:#f4ecdc;font:16px/1.6 system-ui;min-height:100vh}main{max-width:1030px;margin:auto;padding:28px}h1,h2{font-family:Georgia,serif;color:#e9c287}h1{font-size:40px}a{color:#edce95}.panel{background:#1c2635;border:1px solid #435771;border-radius:13px;padding:23px;margin:18px 0}button,.button{border:1px solid #c29b5b;border-radius:8px;background:#b99050;color:#151922;padding:11px 18px;cursor:pointer;font-weight:700;text-decoration:none;display:inline-block}.outline{background:transparent;color:#e9ca92}.characters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.character{padding:20px;border:1px solid #4b5c71;border-radius:12px;background:#1b2431}.character p{color:#bfcfe0}.row{display:flex;gap:10px;flex-wrap:wrap}small{color:#b5c6d7}@media(max-width:680px){.characters{grid-template-columns:1fr}}</style></head>
+<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#27344a,#101722);color:#f4ecdc;font:16px/1.6 system-ui;min-height:100vh}main{max-width:1030px;margin:auto;padding:28px}h1,h2{font-family:Georgia,serif;color:#e9c287}h1{font-size:40px}a{color:#edce95}.panel{background:#1c2635;border:1px solid #435771;border-radius:13px;padding:23px;margin:18px 0}button,.button{border:1px solid #c29b5b;border-radius:8px;background:#b99050;color:#151922;padding:11px 18px;cursor:pointer;font-weight:700;text-decoration:none;display:inline-block}.outline{background:transparent;color:#e9ca92}.characters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.character{padding:20px;border:1px solid #4b5c71;border-radius:12px;background:#1b2431}.character p{color:#bfcfe0}.row{display:flex;gap:10px;flex-wrap:wrap}small{color:#b5c6d7}@media(max-width:680px){.characters{grid-template-columns:1fr}}.cs-modal-backdrop{position:fixed;inset:0;z-index:50;background:#000c;padding:12px;display:flex;align-items:center;justify-content:center}
+.cs-dialog{width:min(1440px,100%);max-height:96vh;overflow-y:auto;background:#192638;border:1px solid #86694a;border-radius:14px;padding:16px}
+.cs-dialog-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px;border-bottom:1px solid #52657a;padding-bottom:10px}
+.cs-dialog-head h2{font-size:23px;margin:0}
+.cs-modal-backdrop[hidden]{display:none}
+@media(max-width:700px){.cs-dialog{padding:10px;max-height:98vh}}
+</style><link rel="stylesheet" href="/ficha-ui.css"></head>
 <body><main><a href="/">← Página inicial</a><h1>As tuas personagens</h1><p>Cria uma personagem uma única vez. Depois podes levá-la para diferentes campanhas, conservando a ficha e a progressão.</p>
-<div class="panel"><a class="button" href="/personagem.html">+ Criar nova personagem</a></div><div class="characters" id="characters"></div><p><small>As personagens estão guardadas neste navegador nesta versão de testes; a sincronização entre PC e iPad ainda será implementada.</small></p></main>
+<div class="panel"><a class="button" href="/personagem.html">+ Criar nova personagem</a></div><div class="characters" id="characters"></div><p><small>As fichas são guardadas neste dispositivo e sincronizadas com a tua conta quando a ligação à cloud está disponível.</small></p></main>
+<div id="sheetPreview" class="cs-modal-backdrop" hidden><div class="cs-dialog" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+<div class="cs-dialog-head"><h2 id="sheetTitle">Ficha de personagem</h2><button id="sheetClose" class="outline" type="button">Fechar ✕</button></div>
+<div id="sheetPreviewBody"></div></div></div>
 <script type="module">
 import {requireLogin} from '/auth-client.mjs';
-import {restorePlayerState} from '/cloud-sync.mjs';
+import {restorePlayerState,queuePlayerSync} from '/cloud-sync.mjs';
+import {renderCharacterSheet} from '/ficha-ui.mjs';
 if(await requireLogin()){
  try{await restorePlayerState()}catch(e){console.warn('Sincronização pendente:',e.message)}
 }
@@ -16,12 +26,32 @@ for(const saveId of legacySaves){const save=JSON.parse(localStorage.getItem('cv-
  if(!localStorage.getItem('cv-character-'+id)){localStorage.setItem('cv-character-'+id,JSON.stringify({...save.character,id,updated:save.updated||Date.now()}));if(!ids.includes(id))ids.push(id)}
 }
 localStorage.setItem('cv-character-index',JSON.stringify(ids));
+const modal=document.getElementById('sheetPreview');
+const close=()=>{modal.hidden=true};
+document.getElementById('sheetClose').onclick=close;
+modal.addEventListener('click',event=>{if(event.target===modal)close()});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!modal.hidden)close()});
+function previewCharacter(id){
+ const character=JSON.parse(localStorage.getItem('cv-character-'+id)||'null');if(!character)return;
+ document.getElementById('sheetTitle').textContent='Ficha de '+(character.nome||'Personagem');
+ renderCharacterSheet(document.getElementById('sheetPreviewBody'),{
+  character,
+  editHref:'/personagem.html?editar='+encodeURIComponent(id),
+  onSave:()=>{
+   character.updated=Date.now();
+   localStorage.setItem('cv-character-'+id,JSON.stringify(character));
+   queuePlayerSync();
+  }
+ });
+ modal.hidden=false;
+}
 if(!ids.length){const p=document.createElement('p');p.textContent='Ainda não tens personagens criadas. Começa por criar a primeira.';root.append(p)}
 for(const id of ids){const c=JSON.parse(localStorage.getItem('cv-character-'+id)||'null');if(!c)continue;
  const card=document.createElement('div');card.className='character';
  const h=document.createElement('h2');h.textContent=c.nome||'Personagem';const p=document.createElement('p');p.textContent=(c.raca||'')+' · '+(c.classe||'')+' · Nível '+(c.nivel||1);const buttons=document.createElement('div');buttons.className='row';
  const use=document.createElement('button');use.textContent='Escolher campanha';use.onclick=()=>{localStorage.setItem('cv-active-character',id);location.href='/campanhas.html?personagem='+encodeURIComponent(id)};
  const edit=document.createElement('a');edit.href='/personagem.html?editar='+encodeURIComponent(id);edit.className='button outline';edit.textContent='Editar ficha';
- buttons.append(use,edit);card.append(h,p,buttons);root.append(card);
+ const view=document.createElement('button');view.textContent='Ver ficha';view.className='button outline';view.onclick=()=>previewCharacter(id);
+ buttons.append(use,view,edit);card.append(h,p,buttons);root.append(card);
 }
 </script></body></html>
