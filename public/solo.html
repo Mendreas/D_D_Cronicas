@@ -230,6 +230,16 @@ if(game?.character&&sharedProfile){
  // O inventário e os marcos já alcançados pertencem à personagem, não ao save.
  game.character.equipamento=sharedProfile.equipamento??game.character.equipamento;
  game.character.conquistas=[...new Set([...(localHero.conquistas||[]),...(sharedProfile.conquistas||[])])];
+ // Alterações feitas à ficha na página de personagens acompanham a campanha.
+ if(Number(sharedProfile.sheetRevision||0)>Number(localHero.sheetRevision||0)){
+  for(const key of ['equipamento','personalidade','historia','notas','moedas','ataques',
+    'espacosMagia','resistencias','imunidades','vulnerabilidades','condicoes','idiomas',
+    'proficienciasEquipamento','magias','capacidades','inspiracao','pvTemporarios',
+    'dadosVidaGastos','morteSucessos','morteFalhas','classeArmadura','deslocacao','pv']){
+    if(sharedProfile[key]!==undefined)game.character[key]=sharedProfile[key];
+  }
+  game.character.sheetRevision=sharedProfile.sheetRevision;
+ }
 }
 if(game?.character){
  const savedParty=readParty(sharedProfileId);
@@ -269,12 +279,21 @@ function saveGame(announce=false){
   const pkey='cv-character-'+profileId;
   const existing=JSON.parse(localStorage.getItem(pkey)||'null');
   if(existing){
-   const next={...existing,equipamento:char.equipamento,personalidade:char.personalidade,
-     historia:char.historia,updated:Date.now()};
+   const next={...existing,updated:Date.now()};
+   if(Number(char.sheetRevision||0)>=Number(existing.sheetRevision||0)){
+    for(const key of ['equipamento','personalidade','historia','notas','moedas','ataques',
+      'espacosMagia','resistencias','imunidades','vulnerabilidades','condicoes','idiomas',
+      'proficienciasEquipamento','magias','capacidades','inspiracao','pvTemporarios',
+      'dadosVidaGastos','morteSucessos','morteFalhas','classeArmadura','deslocacao']){
+      if(char[key]!==undefined)next[key]=char[key];
+    }
+    next.sheetRevision=char.sheetRevision||existing.sheetRevision||0;
+   }
    if(Number(char.experiencia||0)>=Number(existing.experiencia||0)){
      next.experiencia=char.experiencia||0;
      next.conquistas=Array.isArray(char.conquistas)?char.conquistas:[];
-     for(const key of ['pvTemporarios','dadosVidaGastos','morteSucessos','morteFalhas','classeArmadura','deslocacao','periciasProficientes','periciasEspecialistas','salvaguardasProficientes','magias','capacidades'])if(char[key]!==undefined)next[key]=char[key];
+     for(const key of ['periciasProficientes','periciasEspecialistas','salvaguardasProficientes'])
+      if(char[key]!==undefined)next[key]=char[key];
      next.nivel=char.nivel;next.pvMax=char.pvMax;next.pv=char.pv;
    }
    localStorage.setItem(pkey,JSON.stringify(next));
@@ -559,7 +578,7 @@ function showSheet(){
  openModal('Ficha de '+(char.nome||'Personagem'),root=>{
   renderCharacterSheet(root,{
    character:char,
-   onSave:()=>saveGame(),
+   onSave:()=>{char.sheetRevision=Date.now();saveGame()},
    editHref:'/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||''),
    onOpenDice:showDice
   });
