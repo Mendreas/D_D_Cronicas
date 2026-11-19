@@ -26,6 +26,39 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 .final-stat-value{display:block;font-size:26px;font-weight:800;color:#f4cb88;line-height:1.15}
 @media(max-width:750px){.abilities,.final-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:440px){.abilities,.final-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Distribuição visual de atributos: valores disponíveis e fichas individuais. */
+.attribute-layout{display:grid;grid-template-columns:minmax(235px,.9fr) minmax(0,2.45fr);gap:16px;align-items:start;margin-top:14px}
+.attribute-side{display:flex;flex-direction:column;gap:12px}
+.attribute-side-panel{background:#141c27;border:1px solid #554c45;border-radius:11px;padding:14px}
+.attribute-side-panel h3{font:700 18px Georgia,serif;color:#e4b779;margin:0 0 12px}
+.attribute-side-panel .muted{font-size:12px}
+.attribute-side-panel select{font-size:13px;padding:9px}
+.attribute-side-panel label{margin-top:12px}
+.bonus-fields{display:grid;gap:8px}
+.ability-bank{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
+.ability-bank-token{display:inline-flex;justify-content:center;align-items:center;min-width:41px;min-height:36px;border:1px solid #826a46;border-radius:8px;background:#304052;color:#ffdaa0;font-weight:750;font-size:16px}
+.ability-bank-token.assigned{opacity:.42;text-decoration:line-through}
+.ability-bank-status{font-size:12px;color:#b8c6d3;width:100%;margin-top:5px}
+#clearAssignments{margin-top:8px;padding:9px 13px;width:100%;font-size:12px}
+.attribute-main .abilities{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.attribute-main .ability-card{min-height:203px;align-items:stretch;padding:12px 13px;gap:9px;justify-content:start;background:linear-gradient(135deg,#273240,#151c29)}
+.attribute-card-head{display:flex;justify-content:space-between;align-items:center}
+.attribute-main .ability-card .ability-name{font:700 17px Georgia,serif;text-align:left;color:#f1d5a5}
+.attribute-card-head .ability-boost{font-size:12px;color:#a9c9ad}
+.attribute-choices{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;margin:6px 0}
+.attribute-choices.six-values{grid-template-columns:repeat(6,minmax(0,1fr))}
+.attribute-choice{font-size:12px;padding:9px 0;min-width:0;border:1px solid #586172;border-radius:5px;background:#151a23;color:#d6d2cb;cursor:pointer}
+.attribute-choice[aria-pressed=true]{color:#fff7e9;background:#b15d42;border-color:#d28a68;font-weight:800}
+.attribute-choice:disabled:not([aria-pressed=true]){color:#68707c;opacity:.45;text-decoration:line-through;cursor:not-allowed}
+.attribute-result{display:flex;align-items:center;justify-content:center;gap:12px;margin:auto 0 3px}
+.attribute-mod{font-size:27px;font-weight:800;color:#f0d5b7;border:1px solid #6c8292;border-radius:12px;padding:5px 13px;min-width:70px}
+.attribute-final{display:flex;flex-direction:column;align-items:start;gap:1px}
+.attribute-final span:first-child{font-size:10px;color:#b6c6d3;text-transform:uppercase}
+.attribute-final strong{font-size:25px;color:#f5c684;line-height:1}
+.attribute-card-actions{display:flex;justify-content:center;min-height:25px}
+.attribute-release{background:transparent;color:#dfc08d;border:1px solid #6f614f;border-radius:6px;padding:4px 12px;font-size:11px}
+@media(max-width:850px){.attribute-layout{grid-template-columns:1fr}.attribute-side{display:grid;grid-template-columns:1fr 1fr}.attribute-main .abilities{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.attribute-side{display:flex}.attribute-main .abilities{grid-template-columns:1fr}}
 .abilities label{position:relative}
 .abilities select{font-size:18px;font-weight:700;color:#f2ce96}
 .abilities select.changed-ability{outline:2px solid #d7a453;outline-offset:2px}
@@ -62,16 +95,33 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 <button type="button" id="rollAbilities" class="secondary" hidden>🎲 Gerar seis valores</button>
 </div>
 <p id="methodDescription" class="muted"></p>
-<div id="dicePool" class="summary" hidden></div>
-<p class="muted">Valores antes dos aumentos do antecedente. Podes modificar um atributo sem que os outros mudem.</p>
-<div id="abilities" class="abilities"></div>
-<p id="statStatus" class="notice" role="status"></p>
-<p id="abilityBudget" class="summary" role="status"></p>
-<div class="budget-track" aria-hidden="true" hidden><div id="budgetFill" class="budget-fill"></div></div>
-<p id="lastAbilityChange" class="muted" hidden></p>
-<h2>Aumentos do antecedente</h2><p id="backgroundRules" class="muted"></p>
-<div class="grid"><label>Distribuição<select id="bonusMode"><option value="dual">+2 a um atributo e +1 a outro</option><option value="triple">+1 aos três atributos</option></select></label><div class="grid" id="bonusDual"><label>+2 em<select id="bonusFirst"></select></label><label>+1 em<select id="bonusSecond"></select></label></div></div>
-<p class="muted">Atributos finais, depois dos aumentos do antecedente:</p><div id="finalStats" class="final-stats"></div></div>
+<div class="attribute-layout">
+  <aside class="attribute-side">
+    <div class="attribute-side-panel">
+      <h3>Valores disponíveis</h3>
+      <div id="abilityBank" class="ability-bank" aria-live="polite"></div>
+      <div id="dicePool" class="muted" hidden></div>
+      <button type="button" id="clearAssignments" class="secondary" hidden>Desatribuir todos</button>
+    </div>
+    <div class="attribute-side-panel">
+      <h3>Antecedente</h3>
+      <p id="backgroundRules" class="muted"></p>
+      <label>Distribuição dos aumentos<select id="bonusMode"><option value="dual">+2 num atributo e +1 noutro</option><option value="triple">+1 em cada um dos três</option></select></label>
+      <div id="bonusDual" class="bonus-fields">
+        <label>+2 em<select id="bonusFirst"></select></label>
+        <label>+1 em<select id="bonusSecond"></select></label>
+      </div>
+    </div>
+  </aside>
+  <div class="attribute-main">
+    <div id="abilities" class="abilities"></div>
+    <p id="statStatus" class="notice" role="status"></p>
+    <p id="abilityBudget" class="summary" role="status"></p>
+    <div class="budget-track" aria-hidden="true" hidden><div id="budgetFill" class="budget-fill"></div></div>
+    <p id="lastAbilityChange" class="muted" hidden></p>
+    <div id="finalStats" class="final-stats" hidden></div>
+  </div>
+</div></div>
 <div class="panel"><h2>3. Perícias da personagem</h2>
 <p id="backgroundSkills" class="summary"></p>
 <p id="skillStatus" class="notice"></p><div id="skills"></div>
