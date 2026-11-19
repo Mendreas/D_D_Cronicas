@@ -1,0 +1,89 @@
+/* Ficha de personagem — organização original inspirada em fichas digitais clássicas */
+.modal:has(.cs-sheet){width:min(1440px,calc(100vw - 24px));max-height:94vh;padding:14px 18px}
+.modal:has(.cs-sheet) .modal-head{border-bottom:1px solid #6b5538;padding-bottom:10px;margin-bottom:12px}
+.cs-sheet{color:#f0e9de;display:flex;flex-direction:column;gap:12px;font-size:13px}
+.cs-sheet button{font:inherit}
+.cs-hero{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#111b28;border:1px solid #67543a;border-radius:11px;padding:16px}
+.cs-identity{min-width:190px}
+.cs-name{font:700 27px Georgia,serif;color:#f0c98a}
+.cs-meta{color:#bdccda;font-size:13px;margin-top:2px}
+.cs-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cs-badges .cs-stat{min-width:90px}
+.cs-stat{display:flex;flex-direction:column;gap:2px;background:#19293b;border:1px solid #344a60;border-radius:9px;padding:9px 10px}
+.cs-stat-name{color:#b9ccda;font-size:11px;line-height:1.35}
+.cs-stat-value{font-size:19px;color:#f3cd91;line-height:1.25}
+.cs-edit{color:#f0cf98;text-decoration:none;border:1px solid #826841;padding:10px 12px;border-radius:8px;font-size:12px;display:inline-flex;align-items:center}
+.cs-edit:hover{background:#29384b}
+.cs-inspiration{background:#172d40;color:#f2ca84;border:1px solid #725a3a;padding:10px 12px;border-radius:8px}
+.cs-inspiration[aria-pressed=true]{background:#574528;color:#fff2cf}
+.cs-status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 2.7fr;gap:8px}
+.cs-hp{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:#172638;border:1px solid #3a5366;border-radius:9px;padding:7px}
+.cs-hp .cs-stat{background:transparent;border:0;padding:4px}
+.cs-hp .cs-field{min-width:0}
+.cs-roll-message{font-size:12px;color:#c3d2dd;background:#182636;border-left:3px solid #b48c51;padding:9px 13px;min-height:38px}
+.cs-abilities{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.cs-ability{color:#f1e4d0;display:flex;flex-direction:column;align-items:center;gap:5px;background:linear-gradient(180deg,#28364a,#141e2e);border:1px solid #536a79;border-radius:10px;padding:10px 5px;cursor:pointer}
+.cs-ability:hover,.cs-skill:hover{background:#31445a}
+.cs-ability-name{font-weight:700;color:#eac78f;font-size:13px}
+.cs-ability-mod{font:700 20px Georgia,serif;border:1px solid #7891a0;border-radius:30px;padding:3px 15px;min-width:62px}
+.cs-ability-score{font:800 25px Georgia,serif;color:#f9d7a0}
+.cs-grid{display:grid;grid-template-columns:minmax(190px,.92fr) minmax(330px,2.35fr) minmax(190px,.9fr);gap:12px;align-items:start}
+.cs-left,.cs-center,.cs-right{min-width:0;display:flex;flex-direction:column;gap:10px}
+.cs-center{background:#101c29;border:1px solid #496079;border-radius:10px;min-height:520px;overflow:hidden}
+.cs-section{background:#172538;border:1px solid #435a6d;border-radius:9px;padding:10px;min-width:0}
+.cs-section-title{font:700 15px Georgia,serif!important;color:#e8b875!important;margin:0 0 12px!important;text-transform:uppercase;letter-spacing:.02em}
+.cs-skill{display:flex;align-items:center;text-align:left;gap:6px;width:100%;padding:6px 4px;border:0;border-bottom:1px solid #344658;border-radius:0;background:transparent;color:#e3e9ee;cursor:pointer;font-size:12px!important}
+.cs-skill:last-child{border-bottom:0}
+.cs-skill-name{flex:1;line-height:1.25}
+.cs-skill strong{color:#f1c78b;font-size:13px;min-width:26px;text-align:right}
+.cs-proficiency{font-size:12px;min-width:14px;color:#e5bf83}
+.cs-tip{font-size:11px;color:#9fb4c6;line-height:1.5;margin:6px 0}
+.cs-tabs{display:flex;align-items:stretch;flex-wrap:wrap;gap:3px;padding:9px 9px 0;border-bottom:1px solid #516374;background:#19293a}
+.cs-tab{border:0;border-bottom:3px solid transparent!important;border-radius:5px 5px 0 0;background:transparent!important;color:#bdccda!important;padding:10px 12px!important;cursor:pointer;font-size:12px!important}
+.cs-tab[aria-selected=true]{border-bottom-color:#e2b973!important;color:#f5d19b!important;background:#2c3d50!important;font-weight:750}
+.cs-tabpanel{padding:13px;min-height:420px}
+.cs-tabpanel > .cs-section-title:first-child{font-size:19px!important;margin-bottom:15px!important}
+.cs-tabpanel .cs-section{margin:14px 0}
+.cs-tab-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0 15px}
+.cs-tab-stats .cs-stat{min-width:0}
+.cs-form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.cs-field{display:flex;flex-direction:column;gap:6px;margin:8px 0;color:#b7c9d7;font-size:12px}
+.cs-field input,.cs-field textarea{font:14px system-ui;color:#f8efe3;border:1px solid #576c7d;background:#0e1a27;border-radius:7px;padding:9px;min-width:0;width:100%}
+.cs-field textarea{min-height:60px;resize:vertical}
+.cs-number input{font-size:16px;font-weight:700;text-align:center}
+.cs-hp .cs-number{margin:0}
+.cs-hp .cs-field input{padding:6px;min-width:0}
+.cs-conditions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.cs-condition{font-size:11px;display:flex;align-items:center;gap:6px;border:1px solid #3b5063;background:#102031;border-radius:7px;padding:6px 4px;cursor:pointer}
+.cs-condition input{width:15px;height:15px;accent-color:#b79056;flex:0 0 auto}
+.cs-right .cs-stat{margin:5px 0}
+.cs-ally{background:#192c3d;border:1px solid #3f5469;border-radius:6px;padding:9px 10px}
+.cs-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;border-top:1px solid #3b5269;padding:12px 0;color:#a6bdcb;font-size:11px}
+.cs-dice{background:#31445b;color:#f3d4a1;border:1px solid #7b6a4e;border-radius:8px;padding:8px 12px;cursor:pointer}
+@media(max-width:1150px){
+ .cs-hero{align-items:flex-start;flex-direction:column}
+ .cs-status{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .cs-hp{grid-column:1/-1}
+ .cs-grid{grid-template-columns:minmax(165px,.85fr) minmax(285px,1.8fr)}
+ .cs-right{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cs-right .cs-section:last-child{grid-column:1/-1}
+}
+@media(max-width:720px){
+ .modal:has(.cs-sheet){padding:12px;width:calc(100vw - 12px);max-height:98vh}
+ .cs-name{font-size:23px}
+ .cs-status{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cs-hp{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cs-abilities{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cs-grid{grid-template-columns:1fr}
+ .cs-left{order:2}
+ .cs-center{order:1;min-height:420px}
+ .cs-right{order:3;display:flex}
+ .cs-conditions{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cs-tab{padding:9px 7px!important}
+ .cs-tab-stats,.cs-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:400px){
+ .cs-badges .cs-stat{min-width:calc(50% - 5px)}
+ .cs-conditions{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cs-hp{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
