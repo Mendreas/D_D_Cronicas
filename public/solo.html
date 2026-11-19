@@ -79,7 +79,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 @media(max-width:650px){.sheet-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.sheet-edit-grid,.sheet-skill-grid{grid-template-columns:1fr}.dice-options{grid-template-columns:1fr 1fr}}
 [hidden]{display:none!important}
 @media(max-width:790px){header{align-items:flex-start}.panels{grid-template-columns:1fr}#chat{height:48vh;min-height:300px}#artBox{height:290px;min-height:290px}.action-row{flex-direction:column}.action-row button{min-height:45px}.stats{grid-template-columns:repeat(2,1fr)}}
-</style></head>
+</style><link rel="stylesheet" href="/ficha-ui.css"></head>
 <body>
 <header><div class="brand">✦ Crónicas do Véu</div>
 <nav class="nav"><a href="/">⌂ Início</a><button class="secondary" data-view="ficha">Ficha</button><button class="secondary" data-view="inventario">Inventário</button><button class="secondary" data-view="mapa">Mapa</button><button id="saveBtn">Guardar</button><button id="logoutBtn" class="secondary" title="Terminar sessão Supabase">Sair</button></nav>
@@ -105,6 +105,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <script type="module">
 import {abilityCheck,proficiencyBonus,modifier,SKILLS_2024,skillBonus,savingThrowBonus,classHitDie,spellAbility,rollDice,initialSavingThrows} from '/rules-2024.mjs';
 import {ABILITY_METHODS,validateAbilityScores} from '/criacao-regras.mjs';
+import {renderCharacterSheet} from '/ficha-ui.mjs';
 import {gameToken,requireLogin,gameClient} from '/auth-client.mjs';
 import {renderCampaignMap} from '/mapas.mjs';
 import {restorePlayerState,queuePlayerSync} from '/cloud-sync.mjs';
@@ -556,72 +557,12 @@ function sheetControl(parent,label,value,onUpdate,{min=0,max=999}={}){
 }
 function showSheet(){
  openModal('Ficha de '+(char.nome||'Personagem'),root=>{
-  const prof=proficiencyBonus(char.nivel||1),hitDie=classHitDie(char);
-  const spell=spellAbility(char);
-  const attrs={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
-  root.append(make('p',char.nome+' · '+char.raca+' · '+char.classe+' · '+char.antecedente,'sheet-subtitle'));
-  const essentials=make('div',undefined,'sheet-summary');
-  for(const [k,v] of [['Nível',char.nivel||1],['XP',char.experiencia||0],['Proficiência',signed(prof)],['CA',char.classeArmadura??(10+modifier(char.atributos?.dex??10))],['Iniciativa',signed(modifier(char.atributos?.dex??10))],['Deslocação',char.deslocacao||'—'],['Perceção passiva',10+skillBonus(char,'Perceção')],['Dado de vida','d'+hitDie]]){
-   const cell=make('div',undefined,'stat');cell.append(make('small',k),make('strong',v));essentials.append(cell);
-  }
-  root.append(essentials);
-  const hp=make('div',undefined,'sheet-edit-grid');
-  sheetControl(hp,'PV atuais',char.pv??1,v=>char.pv=Math.min(v,Number(char.pvMax)||v),{max:999});
-  sheetControl(hp,'PV máximos',char.pvMax??1,v=>{char.pvMax=Math.max(1,v);char.pv=Math.min(Number(char.pv)||0,char.pvMax)},{min:1,max:999});
-  sheetControl(hp,'PV temporários',char.pvTemporarios??0,v=>char.pvTemporarios=v);
-  sheetControl(hp,'Dados de vida gastos',char.dadosVidaGastos??0,v=>char.dadosVidaGastos=Math.min(v,Number(char.nivel)||1),{max:20});
-  root.append(make('h3','Pontos de vida e descanso'),hp,make('p','Ajustar estes valores não concede níveis nem XP. Dados de vida disponíveis: '+Math.max(0,(Number(char.nivel)||1)-(Number(char.dadosVidaGastos)||0))+' de '+(char.nivel||1)+'.','helper'));
-  const abilities=make('div',undefined,'stats');
-  for(const [code,name] of Object.entries(attrs)){
-   const value=Number(char.atributos?.[code]??10),score=make('div',undefined,'stat ability-sheet-stat');
-   score.append(make('small',name),make('span',signed(modifier(value)),'ability-mod'),make('strong',value,'ability-score'));abilities.append(score);
-  }
-  root.append(make('h3','Atributos'),abilities);
-  const methodNames={point:'Compra de pontos (27)',standard:'Array padrão',rolled:'Lançamento de 4d6'};
-  root.append(make('p','Método de criação: '+(methodNames[char.metodoAtributos]||'Revisão de ficha pendente')+'. Os atributos de base são revistos no criador; os aumentos de nível seguem as respetivas regras.','helper'));
-  char.salvaguardasProficientes=Array.isArray(char.salvaguardasProficientes)?char.salvaguardasProficientes:initialSavingThrows(char.classe);
-  char.periciasProficientes=Array.isArray(char.periciasProficientes)?char.periciasProficientes:[];
-  char.periciasEspecialistas=Array.isArray(char.periciasEspecialistas)?char.periciasEspecialistas:[];
-  const editLink=make('a','Rever escolhas e validar ficha (SRD 5.2.1)');
-  editLink.href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||'');
-  editLink.className='button secondary';
-  editLink.style.cssText='display:inline-block;margin:8px 0 14px;padding:10px 12px;border:1px solid #bd9454;border-radius:8px;color:#f0d5a4;text-decoration:none';
-  root.append(editLink);
-  if(!char.criacaoValidada)root.append(make('p','Ficha anterior à validação SRD: algumas proficiências podem ter sido atribuídas livremente. Revê a ficha para corrigir as escolhas sem perder a progressão.','helper'));
-  const saves=make('div',undefined,'sheet-skill-grid');
-  for(const [code,name] of Object.entries(attrs)){
-   const label=make('label',undefined,'sheet-check'),check=make('input');
-   check.type='checkbox';check.checked=char.salvaguardasProficientes.includes(code);check.disabled=true;
-   const num=make('strong',signed(savingThrowBonus(char,code)));
-   label.append(check,make('span',name),num);saves.append(label);
-  }
-  root.append(make('h3','Salvaguardas'),make('p','Proficiências determinadas pela classe e capacidades. Para alterar a criação, utiliza «Rever escolhas».','helper'),saves);
-  const skills=make('div',undefined,'sheet-skill-grid');
-  for(const [name,code] of SKILLS_2024){
-   const label=make('label',undefined,'sheet-check'),check=make('input'),bonus=make('strong');
-   check.type='checkbox';check.checked=char.periciasProficientes.includes(name);check.disabled=true;
-   bonus.textContent=signed(skillBonus(char,name));
-   label.append(check,make('span',name+' ('+code.toUpperCase()+')'),bonus);skills.append(label);
-  }
-  root.append(make('h3','18 perícias'),make('p','Só leitura. As escolhas são limitadas pela classe, antecedente e espécie na criação da personagem.','helper'),skills);
-  if(spell){
-   const magic=make('div',undefined,'sheet-summary');
-   const mod=modifier(char.atributos?.[spell]??10);
-   for(const [name,value] of [['Atributo de magia',attrs[spell]],['CD de salvaguarda',8+mod+prof],['Ataque mágico',signed(mod+prof)]]){
-    const cell=make('div',undefined,'stat');cell.append(make('small',name),make('strong',value));magic.append(cell)
-   }
-   root.append(make('h3','Conjuração'),magic);
-   field(root,'Magias conhecidas ou preparadas',char.magias||'',true,v=>{char.magias=v;saveGame()});
-  }
-  const death=make('div',undefined,'sheet-edit-grid');
-  sheetControl(death,'Sucessos contra a morte',char.morteSucessos??0,v=>char.morteSucessos=v,{max:3});
-  sheetControl(death,'Falhas contra a morte',char.morteFalhas??0,v=>char.morteFalhas=v,{max:3});
-  root.append(make('h3','Salvaguardas contra a morte'),death);
-  field(root,'Capacidades, talentos e proficiências adicionais',char.capacidades||'',true,v=>{char.capacidades=v;saveGame()});
-  field(root,'Equipamento e moedas',char.equipamento||'',true,v=>{char.equipamento=v;saveGame()});
-  root.append(make('h3','Companheiros do grupo'));
-  for(const ally of char.companheiros||[])root.append(make('div',(ally.nome||'Aliado')+' · '+ally.classe+' · Nível '+(ally.nivel||1)+' · '+(ally.experiencia||0)+' XP · PV '+(ally.pv??'?')+'/'+(ally.pvMax??'?'),'pill'));
-  root.append(make('p','Ficha expandida com cálculos base SRD 5.2.1. Proficiências, magias e capacidades precisam de validação conforme a classe, espécie, antecedentes e nível. Combate, recursos de classe e recuperação automática ainda não constituem um motor de regras completo.','helper'));
+  renderCharacterSheet(root,{
+   character:char,
+   onSave:()=>saveGame(),
+   editHref:'/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||''),
+   onOpenDice:showDice
+  });
  });
 }
 function showInventory(){
