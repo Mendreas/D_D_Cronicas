@@ -186,10 +186,16 @@ function fillSelect(el,entries,wanted){
 }
 function update(){
  const bg=BACKGROUNDS[$('background').value],cls=CLASS_SKILLS[$('cls').value];
- if(!bg||!cls)return;
+ if(!bg||!cls){$('start').disabled=true;return}
  const attrs=bg.abilities;
- const previousFirst=$('bonusFirst').value||existing?.bonusPrincipal||attrs[0];
- const previousSecond=$('bonusSecond').value||existing?.bonusSecundario||attrs[1];
+ const template=CLASS_STANDARD_ARRAY[$('cls').value]||CLASS_STANDARD_ARRAY.Wizard;
+ const priority=[...attrs].sort((a,b)=>template[ABILITY_CODES.indexOf(b)]-template[ABILITY_CODES.indexOf(a)]);
+ const prevFirst=$('bonusFirst').value;
+ const prevSecond=$('bonusSecond').value;
+ const previousFirst=bonusSaved&&attrs.includes(existing?.bonusPrincipal)?existing.bonusPrincipal:
+   attrs.includes(prevFirst)?prevFirst:priority[0];
+ const previousSecond=bonusSaved&&attrs.includes(existing?.bonusSecundario)?existing.bonusSecundario:
+   attrs.includes(prevSecond)?prevSecond:priority.find(x=>x!==previousFirst);
  fillSelect($('bonusFirst'),attrs.map(a=>[a,ABILITY_LABELS[a]]),previousFirst);
  fillSelect($('bonusSecond'),attrs.map(a=>[a,ABILITY_LABELS[a]]),previousSecond);
  if($('bonusFirst').value===$('bonusSecond').value)$('bonusSecond').value=attrs.find(a=>a!==$('bonusFirst').value);
@@ -213,21 +219,45 @@ function update(){
  speciesSelected=$('speciesSkill').value;
  $('skillStatus').textContent='Escolhas da classe: '+chosen.length+' / '+cls.count+'. Só podes selecionar '+cls.count+' perícias desta lista.';
  $('totalSkills').textContent='Total previsto: '+(cls.count+2+(options.length?1:0))+' perícias sem duplicação (antecedente + classe'+(options.length?' + espécie':'')+').';
- const v=Object.values(currentBase()),valid=STANDARD_ARRAY.every(x=>v.includes(x))&&new Set(v).size===6;
- $('statStatus').textContent=valid?'Array padrão válido.':'Corrige os atributos: todos os seis valores devem ser diferentes.';
+ let abilitiesValid=true;
  try{
-  const total=abilityIncrease(currentBase(),$('background').value,$('bonusMode').value,$('bonusFirst').value,$('bonusSecond').value);
-  $('finalStats').textContent='Atributos finais: '+ABILITY_CODES.map(k=>ABILITY_LABELS[k]+' '+total[k]).join(' · ');
- }catch(e){$('finalStats').textContent=e.message}
- $('start').disabled=!!editId&&!existing;
+  validateAbilityScores(currentBase(),method,rollPool);
+  $('statStatus').classList.remove('error');
+  $('statStatus').textContent=method==='point'?'Compra de pontos válida.':
+    method==='standard'?'Array padrão válido: cada valor usado exatamente uma vez.':
+    'Valores gerados por dados válidos; podes trocá-los entre atributos.';
+ }catch(e){abilitiesValid=false;$('statStatus').textContent=e.message;$('statStatus').classList.add('error')}
+ const sum=ABILITY_CODES.reduce((n,k)=>n+abilityScores[k],0);
+ if(method==='point'){
+  let cost=0;try{cost=pointCostTotal(abilityScores)}catch{}
+  $('abilityBudget').textContent='Pontos utilizados: '+cost+' / '+POINT_BUDGET+
+   ' — Disponíveis: '+(POINT_BUDGET-cost)+'. Soma dos seis atributos: '+sum+' (a soma não substitui os custos por atributo).';
+ }else if(method==='standard')$('abilityBudget').textContent='Array padrão: 15 + 14 + 13 + 12 + 10 + 8 = 72 pontos base. Os valores não podem ser duplicados.';
+ else $('abilityBudget').textContent='Dados: '+rollPool.join(' + ')+' = '+sum+' pontos base, determinados pelo lançamento de 4d6 (descarta-se o menor).';
+ try{
+  const total=abilityIncrease(currentBase(),$('background').value,$('bonusMode').value,$('bonusFirst').value,$('bonusSecond').value,method,rollPool);
+  $('finalStats').textContent='Atributos finais após o antecedente: '+ABILITY_CODES.map(k=>ABILITY_LABELS[k]+' '+total[k]).join(' · ');
+ }catch(e){$('finalStats').textContent=e.message;abilitiesValid=false}
+ $('start').disabled=(!abilitiesValid||chosen.length!==cls.count||(options.length>0&&!speciesSelected)|| (!!editId&&!existing));
 }
 for(const id of ['background','cls','species','bonusMode','bonusFirst','bonusSecond'])$(id).addEventListener('change',()=>{
- if(id==='cls'||id==='background')chosen=[];
+ if(id==='cls'||id==='background'){
+  chosen=[];bonusSaved=false;
+  $('bonusFirst').value='';$('bonusSecond').value='';
+ }
+ if(id==='cls'&&!abilityTouched){
+  abilityScores=recommendedAbilities($('cls').value,method,rollPool);
+  showAbilityControls();
+ }else if(id==='cls'){
+  $('notice').textContent='A distribuição personalizada foi mantida. Podes aplicar a recomendação da nova classe no botão acima.';
+ }
  if(id==='species'||id==='background')speciesSelected='';
+ if(id==='bonusFirst'||id==='bonusSecond')bonusSaved=false;
  update();
 });
 $('speciesSkill').onchange=()=>{speciesSelected=$('speciesSkill').value;update()};
 update();
+if(initialWasInvalid)$('notice').textContent='A distribuição anterior não respeitava os limites. Coloquei uma proposta válida para a classe, sem alterar a ficha guardada. Revê e guarda quando estiveres satisfeito.';
 // Pré-seleção legal na revisão, nunca copiar proficiências arbitrárias de uma ficha antiga.
 if(existing&&!existing.criacaoValidada){
  const bg=BACKGROUNDS[$('background').value],cls=CLASS_SKILLS[$('cls').value];
@@ -245,7 +275,7 @@ $('start').onclick=async()=>{
  try{valid=validateCreation({
    classe:$('cls').value,antecedente:$('background').value,raca:$('species').value,
    periciasClasse:chosen,periciaEspecie:$('speciesSection').hidden?'':speciesSelected,
-   atributosBase:currentBase(),modoBonus:$('bonusMode').value,bonusPrincipal:$('bonusFirst').value,bonusSecundario:$('bonusSecond').value
+   atributosBase:currentBase(),modoBonus:$('bonusMode').value,bonusPrincipal:$('bonusFirst').value,bonusSecundario:$('bonusSecond').value,metodoAtributos:method,valoresRolados:rollPool
   })}catch(e){$('notice').textContent=e.message;return}
  const attrs=valid.atributos,con=Math.floor((attrs.con-10)/2);
  const hpDie={Barbarian:12,Fighter:10,Paladin:10,Ranger:10,Bard:8,Cleric:8,Druid:8,Monk:8,Rogue:8,Warlock:8,Sorcerer:6,Wizard:6}[$('cls').value]||8;
@@ -259,6 +289,7 @@ $('start').onclick=async()=>{
  const saved=existing||{};
  const c={...saved,id,nome,raca:$('species').value,classe:$('cls').value,antecedente:$('background').value,
   atributos:attrs,atributosBase:currentBase(),modoBonus:$('bonusMode').value,bonusPrincipal:$('bonusFirst').value,bonusSecundario:$('bonusSecond').value,
+  metodoAtributos:method,valoresRolados:method==='rolled'?[...rollPool]:[],detalhesRolagem:method==='rolled'?[...rollDetails]:[],
   periciasClasse:[...chosen],periciaEspecie:$('speciesSection').hidden?'':speciesSelected,
   periciasProficientes:valid.periciasProficientes,
   salvaguardasProficientes:initialSavingThrows($('cls').value),
