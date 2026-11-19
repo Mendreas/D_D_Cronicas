@@ -285,13 +285,13 @@ function update(){
  if(method==='point'){
   current=pointCostTotal(abilityScores);maximum=POINT_BUDGET;
   const available=POINT_BUDGET-current;
-  budget.textContent='Compra de pontos (D&D): '+current+' / '+POINT_BUDGET+
-    (available<0?' | Excedeste '+Math.abs(available)+' ponto(s). Reduz manualmente outros atributos.':
-      ' | '+available+' ponto(s) disponíveis.');
+  budget.textContent=available<0?
+    'Distribuição acima do limite permitido. Reduz um ou mais atributos antes de continuar.':
+    '';
   budget.classList.add(available<0?'overspent':'available');
   $('statStatus').textContent=available<0?
-    'A compra excede o orçamento. Não podes guardar até corrigires.':
-    'Compra de pontos válida; nenhuma outra característica é alterada automaticamente.';
+    'Reduz outro atributo para compensar. Não podes guardar enquanto houver excesso.':
+    available>0?'Distribuição válida. Podes continuar ou ajustar os valores.':'Distribuição válida. Podes continuar.';
  }else{
   const diff=assignmentDifference();
   const extra=diff.excess.length?diff.excess.join(', '):'nenhum';
@@ -318,17 +318,24 @@ function update(){
  if(lastAbilityChange){
   const delta=lastAbilityChange.value-lastAbilityChange.old;
   note.hidden=false;
-  note.textContent='Alteraste apenas '+ABILITY_LABELS[lastAbilityChange.code]+': '+
-    lastAbilityChange.old+' → '+lastAbilityChange.value+
-    ' ('+(delta>=0?'+':'')+delta+'). Os restantes cinco atributos mantiveram os seus valores.';
+  note.textContent=ABILITY_LABELS[lastAbilityChange.code]+': '+
+    lastAbilityChange.old+' → '+lastAbilityChange.value+'. Os outros atributos não mudaram.';
  }else{note.hidden=true;note.textContent=''}
  indicator.style.width=Math.min(100,Math.max(0,100*current/maximum))+'%';
  indicator.classList.toggle('overspent',!abilitiesValid);
+ budget.hidden=abilitiesValid;
  if(abilitiesValid){
   try{
    const total=abilityIncrease(currentBase(),$('background').value,$('bonusMode').value,$('bonusFirst').value,$('bonusSecond').value,method,rollPool);
-   $('finalStats').textContent='Atributos finais após o antecedente: '+
-    ABILITY_CODES.map(k=>ABILITY_LABELS[k]+' '+total[k]).join(' · ');
+   const finalGrid=$('finalStats');finalGrid.replaceChildren();
+   for(const code of ABILITY_CODES){
+    const score=total[code],bonus=modifier(score);
+    const cell=document.createElement('div');cell.className='final-stat';
+    const title=document.createElement('span');title.className='final-stat-label';title.textContent=ABILITY_LABELS[code];
+    const mod=document.createElement('span');mod.className='final-stat-mod';mod.textContent='Mod. '+(bonus>=0?'+':'')+bonus;
+    const value=document.createElement('span');value.className='final-stat-value';value.textContent=String(score);
+    cell.append(title,mod,value);finalGrid.append(cell);
+   }
   }catch(e){$('finalStats').textContent=e.message;abilitiesValid=false}
  }else $('finalStats').textContent='Corrige os atributos acima para calcular os valores finais com o antecedente.';
  $('start').disabled=(!abilitiesValid||chosen.length!==cls.count||(options.length>0&&!speciesSelected)|| (!!editId&&!existing));
