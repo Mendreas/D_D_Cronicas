@@ -42,9 +42,9 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 <label>Antecedente (SRD)<select id="background"></select></label>
 </div><p class="muted">O SRD gratuito disponibiliza quatro antecedentes nesta implementação. Outros antecedentes necessitam de regras próprias antes de poderem ser validados.</p></div>
 <div class="panel"><h2>2. Atributos — método de criação</h2>
-<p class="muted">Escolhe um método para definir os seis atributos. Na distribuição livre, decides exatamente onde colocas os pontos: <strong>nenhum outro atributo muda automaticamente</strong>. Os bónus do antecedente são aplicados depois.</p>
+<p class="muted">Os três métodos são os previstos no <strong>SRD 5.2.1 (D&amp;D 2024)</strong>. Podes escolher como distribuir os valores, sem alterações automáticas aos outros atributos. Os bónus do antecedente são aplicados no fim.</p>
 <div class="ability-method-grid">
-<label>Método<select id="abilityMethod"><option value="free">Distribuição livre — 66 pontos (personalizada)</option><option value="point">Compra de pontos (27 pontos — D&amp;D oficial)</option><option value="standard">Array padrão (15, 14, 13, 12, 10, 8)</option><option value="rolled">Dados (4d6, descartando o menor)</option></select></label>
+<label>Método<select id="abilityMethod"><option value="point">Compra de pontos (27 pontos — D&amp;D oficial)</option><option value="standard">Array padrão (15, 14, 13, 12, 10, 8)</option><option value="rolled">Dados (4d6, descartando o menor)</option></select></label>
 <button type="button" id="suggestAbilities" class="secondary">Distribuição recomendada para a classe</button>
 <button type="button" id="rollAbilities" class="secondary" hidden>🎲 Gerar seis valores</button>
 </div>
@@ -71,7 +71,7 @@ button.secondary{background:#182638;color:#f0d5a4;border-color:#8e7146}
 <div class="row"><button id="start">Guardar personagem e escolher campanha</button><a href="/personagens.html">Cancelar</a></div><p id="notice" class="notice" role="status"></p></div>
 </main>
 <script type="module">
-import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,POINT_BUDGET,POINT_COSTS,FREE_BUDGET,FREE_MIN,FREE_MAX,freeAbilityTotal,ABILITY_METHODS,CLASS_STANDARD_ARRAY,pointCostTotal,validateAbilityScores,recommendedAbilities,rollAbilityPool,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
+import {SKILL_NAMES,CLASS_SKILLS,BACKGROUNDS,ABILITY_LABELS,ABILITY_CODES,STANDARD_ARRAY,POINT_BUDGET,POINT_COSTS,ABILITY_METHODS,CLASS_STANDARD_ARRAY,pointCostTotal,validateAbilityScores,recommendedAbilities,rollAbilityPool,validateCreation,abilityIncrease} from '/criacao-regras.mjs';
 import {initialSavingThrows,rollDie} from '/rules-2024.mjs';
 import {requireLogin} from '/auth-client.mjs';
 import {restorePlayerState,syncPlayerState} from '/cloud-sync.mjs';
@@ -94,8 +94,8 @@ if(existing?.antecedente&&!BACKGROUNDS[existing.antecedente]){
 for(const name of Object.keys(BACKGROUNDS)){const op=document.createElement('option');op.value=name;op.textContent=name;$('background').append(op)}
 $('background').value=existing?.antecedente?(BACKGROUNDS[existing.antecedente]?existing.antecedente:''):'Sábio';
 // A distribuição é sempre guardada em separado dos atributos com bónus de origem.
-const initialMethod=ABILITY_METHODS.includes(existing?.metodoAtributos)?existing.metodoAtributos:'free';
-let method=existing?initialMethod:'free';
+const initialMethod=ABILITY_METHODS.includes(existing?.metodoAtributos)?existing.metodoAtributos:'point';
+let method=existing?initialMethod:'point';
 let rollPool=Array.isArray(existing?.valoresRolados)?[...existing.valoresRolados]:[];
 let rollDetails=Array.isArray(existing?.detalhesRolagem)?[...existing.detalhesRolagem]:[];
 let abilityScores=null,abilityTouched=false,bonusSaved=!!existing,initialWasInvalid=false;
@@ -107,9 +107,8 @@ try{
  abilityScores=Object.fromEntries(ABILITY_CODES.map(k=>[k,Number(candidate[k])]));
 }catch{
  initialWasInvalid=!!existing;
- method='free';rollPool=[];rollDetails=[];
- abilityScores=existing?recommendedAbilities($('cls').value,'free'):
-  Object.fromEntries(ABILITY_CODES.map(code=>[code,11]));
+ method='point';rollPool=[];rollDetails=[];
+ abilityScores=recommendedAbilities($('cls').value,'point');
 }
 $('abilityMethod').value=method;
 for(const code of ABILITY_CODES){
@@ -121,7 +120,6 @@ for(const code of ABILITY_CODES){
 }
 function currentBase(){return {...abilityScores}}
 function methodChoices(){
- if(method==='free')return Array.from({length:FREE_MAX-FREE_MIN+1},(_,i)=>FREE_MIN+i);
  if(method==='point')return [8,9,10,11,12,13,14,15];
  if(method==='standard')return [...STANDARD_ARRAY];
  return [...new Set(rollPool)].sort((a,b)=>a-b);
@@ -165,19 +163,12 @@ function showAbilityControls(){
    (scoreCounts.get(value)||0)>(availableCounts.get(value)||0));
   const hint=$('ab-hint-'+code);
   hint.classList.remove('positive','negative');
-  if(method==='free'){
-   const delta=value-11;
-   hint.textContent=delta===0?'Valor inicial: 11':(delta>0?'+':'')+delta+' face a 11';
-   if(delta>0)hint.classList.add('positive');
-   if(delta<0)hint.classList.add('negative');
-  }else if(method==='point')hint.textContent='Custo: '+POINT_COSTS[value]+' pontos';
+  if(method==='point')hint.textContent='Custo: '+POINT_COSTS[value]+' pontos';
   else hint.textContent='';
  }
  $('rollAbilities').hidden=method!=='rolled';
  $('dicePool').hidden=method!=='rolled';
- $('methodDescription').textContent=method==='free'
-  ?'Regra personalizada: tens até 66 pontos no total. Começas com 11 em cada atributo e podes alterar um de cada vez (mínimo 3, máximo 18). O jogo nunca muda outros valores por ti.'
-  :method==='point'
+ $('methodDescription').textContent=method==='point'
   ?'D&D oficial: cada atributo vai de 8 a 15 e tem um custo diferente. Tens 27 pontos de compra; se ultrapassares o limite, reduz manualmente outro atributo.'
   :method==='standard'
   ?'D&D oficial: distribui 15, 14, 13, 12, 10 e 8, uma vez cada. Se repetires um valor, o jogo assinala o erro e deixa-te corrigir manualmente; não faz trocas.'
@@ -214,11 +205,7 @@ function generateRolls(){
 $('abilityMethod').addEventListener('change',()=>{
  method=$('abilityMethod').value;
  lastAbilityChange=null;
- if(method==='free'){
-  // Iniciar com 11 em cada atributo, sem recomendação imposta.
-  abilityScores=Object.fromEntries(ABILITY_CODES.map(code=>[code,11]));
-  abilityTouched=false;showAbilityControls();update();
- }else if(method==='rolled'){
+ if(method==='rolled'){
   if(rollPool.length!==6)generateRolls();else resetAbilityRecommendation();
  }else resetAbilityRecommendation();
 });
@@ -278,18 +265,7 @@ function update(){
  const budget=$('abilityBudget'),indicator=$('budgetFill'),note=$('lastAbilityChange');
  let current=0,maximum=0;
  budget.classList.remove('overspent','available');
- if(method==='free'){
-  current=sum;maximum=FREE_BUDGET;
-  const available=FREE_BUDGET-sum;
-  budget.textContent=available<0
-   ?'PONTOS A MAIS: '+Math.abs(available)+' | Total: '+sum+' / '+FREE_BUDGET+
-    '. Reduz '+Math.abs(available)+' ponto(s) noutro(s) atributo(s). Nenhum valor será modificado automaticamente.'
-   :'Total: '+sum+' / '+FREE_BUDGET+' | '+available+' ponto(s) por distribuir.';
-  budget.classList.add(available<0?'overspent':'available');
-  $('statStatus').textContent=available<0?
-   'Distribuição inválida: ultrapassaste o limite. Altera manualmente os outros atributos.':
-   'Distribuição válida. Podes alterar qualquer atributo sem mudar os restantes.';
- }else if(method==='point'){
+else if(method==='point'){
   current=pointCostTotal(abilityScores);maximum=POINT_BUDGET;
   const available=POINT_BUDGET-current;
   budget.textContent='Compra de pontos (D&D): '+current+' / '+POINT_BUDGET+
@@ -318,7 +294,7 @@ function update(){
   }
  }
  $('statStatus').classList.toggle('error',!abilitiesValid);
- if(validationMessage&&method!=='free'&&method!=='point'){
+ if(validationMessage&&method!=='point'){
   // A informação sobre valores repetidos, em falta, é mais útil do que o erro genérico.
   if(!assignmentDifference().excess.length)$('statStatus').textContent=validationMessage;
  }
@@ -355,7 +331,7 @@ for(const id of ['background','cls','species','bonusMode','bonusFirst','bonusSec
 });
 $('speciesSkill').onchange=()=>{speciesSelected=$('speciesSkill').value;update()};
 update();
-if(initialWasInvalid)$('notice').textContent='A distribuição anterior não respeitava os limites. Coloquei uma proposta válida para a classe, sem alterar a ficha guardada. Revê e guarda quando estiveres satisfeito.';
+if(initialWasInvalid)$('notice').textContent='Esta ficha tinha atributos criados por um método inválido ou personalizado. Apresentei uma distribuição oficial de 27 pontos adequada à classe, mas não alterei a ficha guardada. Revê as escolhas e guarda para validar.';
 // Pré-seleção legal na revisão, nunca copiar proficiências arbitrárias de uma ficha antiga.
 if(existing&&!existing.criacaoValidada){
  const bg=BACKGROUNDS[$('background').value],cls=CLASS_SKILLS[$('cls').value];
