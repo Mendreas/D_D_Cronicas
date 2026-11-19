@@ -34,7 +34,7 @@ export function renderCharacterSheet(root,{character,onSave,editHref,onOpenDice}
  const expertise=Array.isArray(char.periciasEspecialistas)?char.periciasEspecialistas:[];
  const saving=Array.isArray(char.salvaguardasProficientes)?char.salvaguardasProficientes:[];
  const sheet=el('div','cs-sheet');
- const hero=el('header','cs-hero');
+ const hero=el('div','cs-hero');
  const ident=el('div','cs-identity');
  ident.append(el('div','cs-name',char.nome||'Personagem'));
  ident.append(el('div','cs-meta',[char.raca,char.classe,char.antecedente].filter(Boolean).join(' · ')));
@@ -76,7 +76,7 @@ export function renderCharacterSheet(root,{character,onSave,editHref,onOpenDice}
  }
  sheet.append(abilities);
 
- const grid=el('div','cs-grid'),left=el('aside','cs-left'),center=el('main','cs-center'),right=el('aside','cs-right');
+ const grid=el('div','cs-grid'),left=el('aside','cs-left'),center=el('div','cs-center'),right=el('aside','cs-right');
  const saves=section(left,'Salvaguardas');
  for(const [key,name] of Object.entries(ABILITIES)){
   const active=saving.includes(key),bonus=savingThrowBonus(char,key);
