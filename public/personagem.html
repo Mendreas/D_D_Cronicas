@@ -413,8 +413,9 @@ function update(){
  }
  $('statStatus').classList.toggle('error',!abilitiesValid);
  if(validationMessage&&method!=='point'){
-  // A informação sobre valores repetidos, em falta, é mais útil do que o erro genérico.
-  if(!assignmentDifference().excess.length)$('statStatus').textContent=validationMessage;
+  const diff=assignmentDifference();
+  // Mostrar os valores concretos por atribuir, em vez de um aviso genérico.
+  if(!diff.excess.length&&!diff.missing.length)$('statStatus').textContent=validationMessage;
  }
  if(lastAbilityChange){
   const delta=lastAbilityChange.value-lastAbilityChange.old;
