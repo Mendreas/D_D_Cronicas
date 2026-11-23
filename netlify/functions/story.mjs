@@ -110,15 +110,20 @@ export default async (request) => {
     if(continuation.length===3&&numbered.length===3){
       narrative=numberedLines.filter(line=>!/^\s*(?:\*\*)?[1-3][.)](?:\*\*)?\s+/.test(line)).join('\n').trim();
     }
-    // Compatibilidade com respostas que exprimem três opções no mesmo parágrafo.
+    // Aceitar «Podes decidir A, B ou C» sem restringir o verbo da terceira ação.
     if(continuation.length!==3){
-      const paragraphs=narrative.split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean);
-      const candidate=paragraphs.at(-1)||'';
-      const match=candidate.match(/^(?:Podes|Podem|Poderás)\s+(?:tentar\s+)?(.+?)[.!?]?$/is);
+      const paragraphs=narrative.trim().split(/\n\s*\n/);
+      const candidate=paragraphs.at(-1)?.trim()||'';
+      const match=candidate.match(/^(?:Podes|Podem|Poderás)\s+(?:tentar\s+|decidir\s+)?(.+?)[.!?]?$/is);
       if(match){
-        const options=match[1].replace(/[.!?]+$/,'').split(/,\s+|\s+ou\s+(?=(?:acionar|usar|lançar|investigar|procurar|seguir|abrir|examinar|puxar|falar|esperar|tentar|explorar)\b)/i).map(s=>s.trim());
-        if(options.length===3&&options.every(s=>s.length>=8&&s.length<=180)){
-          continuation=options.map(s=>s[0].toUpperCase()+s.slice(1)+'.');
+        const sentence=match[1].replace(/[.!?]+$/,'').trim();
+        const lastOr=sentence.lastIndexOf(' ou ');
+        const firstComma=sentence.indexOf(',');
+        if(firstComma>=0&&lastOr>firstComma){
+          const parts=[sentence.slice(0,firstComma),sentence.slice(firstComma+1,lastOr),sentence.slice(lastOr+4)].map(s=>s.trim());
+          if(parts.every(s=>s.length>=8&&s.length<=200&&!s.includes(','))){
+            continuation=parts.map(s=>s[0].toUpperCase()+s.slice(1)+'.');
+          }
         }
       }
     }
