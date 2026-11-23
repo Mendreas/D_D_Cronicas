@@ -382,14 +382,22 @@ function stripLegacyChoices(narrative){
 }
 // Compatibilidade com narrativas anteriores: opções descritas numa frase final.
 function extractInlineChoices(narrative){
- const text=String(narrative||'').trim();
- const p=text.match(/(?:^|\n)\s*(Podes\s+(?:tentar\s+)?[^\n]{25,620})\s*$/i);
- if(!p)return [];
- const m=p[1].match(/^Podes\s+(?:tentar\s+)?(.+?)[.!?]?$/i);
- if(!m)return [];
- const parts=m[1].replace(/[.!?]+$/,'').split(/,\s+|\s+ou\s+(?=(?:acionar|usar|lançar|investigar|procurar|seguir|abrir|examinar|puxar|falar|esperar|tentar|explorar)\b)/i).map(x=>x.trim());
- if(parts.length!==3||parts.some(x=>x.length<8||x.length>180))return [];
- return parts.map(x=>x[0].toUpperCase()+x.slice(1)+'.');
+ // Interpreta uma frase de três propostas sem inventar alternativas genéricas.
+ const paragraphs=String(narrative||'').trim().split(/\n\s*\n/);
+ const last=paragraphs.at(-1)?.trim()||'';
+ const match=last.match(/^(?:Podes|Podem|Poderás)\s+(?:tentar\s+|decidir\s+)?(.+?)[.!?]?$/is);
+ if(!match)return [];
+ const sentence=match[1].replace(/[.!?]+$/,'').trim();
+ // «A, B ou C»: as três decisões do texto, independentemente do verbo usado.
+ const lastOr=sentence.lastIndexOf(' ou ');
+ const firstComma=sentence.indexOf(',');
+ if(firstComma<0||lastOr<firstComma)return [];
+ const first=sentence.slice(0,firstComma).trim();
+ const second=sentence.slice(firstComma+1,lastOr).trim();
+ const third=sentence.slice(lastOr+4).trim();
+ const parts=[first,second,third];
+ if(parts.some(part=>part.length<8||part.length>200||part.includes(',')))return [];
+ return parts.map(part=>part[0].toUpperCase()+part.slice(1)+'.');
 }
 function fallbackChoices(narrative){
  // Não inventar ações genéricas sem correspondência com a situação descrita.
