@@ -380,21 +380,29 @@ function stripLegacyChoices(narrative){
  return String(narrative||'').split(/\r?\n/)
  .filter(line=>!/^\s*(?:\*\*)?[1-3][.)](?:\*\*)?\s+/.test(line)).join('\n').trim();
 }
-// As campanhas antigas podem guardar turnos sem escolhas estruturadas.
+// Compatibilidade com narrativas anteriores: opções descritas numa frase final.
+function extractInlineChoices(narrative){
+ const text=String(narrative||'').trim();
+ const p=text.match(/(?:^|\n)\s*(Podes\s+(?:tentar\s+)?[^\n]{25,620})\s*$/i);
+ if(!p)return [];
+ const m=p[1].match(/^Podes\s+(?:tentar\s+)?(.+?)[.!?]?$/i);
+ if(!m)return [];
+ const parts=m[1].replace(/[.!?]+$/,'').split(/,\s+|\s+ou\s+(?=(?:acionar|usar|lançar|investigar|procurar|seguir|abrir|examinar|puxar|falar|esperar|tentar|explorar)\b)/i).map(x=>x.trim());
+ if(parts.length!==3||parts.some(x=>x.length<8||x.length>180))return [];
+ return parts.map(x=>x[0].toUpperCase()+x.slice(1)+'.');
+}
 function fallbackChoices(narrative){
- const t=String(narrative||'').toLowerCase();
- if(/escadaria|escadas/.test(t)&&/inscri[cç][oõ]es|s[ií]mbolos|runa/.test(t))
-  return ['Descer a escadaria com o grupo, atento a armadilhas e perigos.','Examinar as ruínas à procura de outra passagem mais segura.','Investigar os símbolos mágicos antes de avançar (teste de Investigação).'];
- if(/inscri[cç][oõ]es|s[ií]mbolos|runa/.test(t))
-  return ['Examinar os símbolos e procurar compreender o seu significado.','Pedir aos companheiros que procurem pistas e passagens ocultas.','Avançar com cautela e observar qualquer reação mágica.'];
- return ['Investigar os arredores à procura de pistas e perigos.','Conversar com os companheiros e decidir em conjunto o próximo passo.','Avançar cautelosamente para explorar o que existe à frente.'];
+ // Não inventar ações genéricas sem correspondência com a situação descrita.
+ return extractInlineChoices(narrative);
 }
 function renderChoices(){
  const wrap=$('choices');wrap.replaceChildren();
  const last=messages.at(-1);
  if(!last||last.role!=='assistant'||busy||pendingCheck){wrap.hidden=true;return}
+ const inline=extractInlineChoices(last.content);
  const stored=(Array.isArray(last.choices)&&last.choices.length===3)?last.choices:extractLegacyChoices(last.content);
- const options=stored.length===3?stored:fallbackChoices(last.content);
+ // Se um save antigo guardou sugestões genéricas, as três ações expressas pelo Mestre prevalecem.
+ const options=inline.length===3?inline:stored.length===3?stored:[];
  if(!options.length){wrap.hidden=true;return}
  wrap.hidden=false;
  options.forEach((option,index)=>{
