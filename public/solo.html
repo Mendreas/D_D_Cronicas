@@ -76,12 +76,13 @@ let scene=game?.currentLocation||'';
 let artwork='',busy=false,artBusy=false,firstAttempted=false;
 let pendingCheck=game?.pendingCheck||null;
 let rollInProgress=false;
+let pendingRoll=game?.pendingRoll||null;
 const abilityLabels={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
 const skillAbilities={percepcao:'wis',perception:'wis',investigacao:'int',arcanismo:'int',arcana:'int',furtividade:'dex',stealth:'dex',atletismo:'str',athletics:'str',acrobacia:'dex',persuasao:'cha',enganacao:'cha',intimidacao:'cha',religiao:'int',historia:'int',sobrevivencia:'wis',intuicao:'wis',prestidigitacao:'dex',natureza:'int',medicina:'wis'};
-function norm(s){return String(s).normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim()}
+function norm(s){return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
 function inferredCheck(text){
  if(typeof text!=='string')return null;
- const m=text.match(/teste\\s+(?:de\\s+|da\\s+|do\\s+)?([\\p{L} ]{3,35})\\s*\\(\\s*CD\\s*(\\d{1,2})\\s*\\)/iu);
+ const m=text.match(/teste\s+(?:de\s+|da\s+|do\s+)?([\p{L} ]{3,35})\s*\(\s*CD\s*(\d{1,2})\s*\)/iu);
  if(!m)return null;
  const label=m[1].trim();
  const ability=skillAbilities[norm(label)]||({forca:'str',destreza:'dex',constituicao:'con',inteligencia:'int',sabedoria:'wis',carisma:'cha'}[norm(label)]);
@@ -104,7 +105,8 @@ function showPendingCheck(){
  if(active){
   $('checkName').textContent='Teste de '+pendingCheck.name;
   $('checkDC').textContent='CD '+pendingCheck.dc;
-  $('checkHelp').textContent='Atributo: '+abilityLabels[pendingCheck.ability]+'. Lança uma vez: o resultado será enviado diretamente ao Mestre, que continuará a história.';
+  $('checkHelp').textContent=pendingRoll?'O lançamento já está registado. Carrega para repetir apenas o envio ao Mestre, sem lançar outro dado.':'Atributo: '+abilityLabels[pendingCheck.ability]+'. Lança uma vez: o resultado será enviado diretamente ao Mestre, que continuará a história.';
+  $('resolveCheck').textContent=pendingRoll?'Continuar com o resultado anterior':'🎲 Lançar teste e continuar a história';
  }
 }
 let visited=Array.isArray(game?.visitedLocations)?game.visitedLocations:[];
@@ -120,7 +122,7 @@ const placeName=s=>(s||'Local desconhecido').replace(/-/g,' ').replace(/\b\p{L}/
 function setNotice(t){$('notice').textContent=t}
 function showAccess(){ $('accessBar').hidden=!!code();if(!code())setNotice('Introduz o teu código de acesso para o Mestre iniciar automaticamente a aventura.')}
 function saveGame(announce=false){
- game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.pendingCheck=pendingCheck;game.updated=Date.now();
+ game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.pendingCheck=pendingCheck;game.pendingRoll=pendingRoll;game.updated=Date.now();
  localStorage.setItem(saveKey,JSON.stringify(game));
  const profileId=game.characterId||char.id;
  if(profileId){
@@ -213,9 +215,11 @@ async function runTurn(action,{initial=false}={}){
   if(!result.text)throw Error('O Mestre não devolveu uma narrativa.');
   messages.push({role:'assistant',content:result.text});
   pendingCheck=checkFromResponse(result);
+  pendingRoll=null;
   updatedLocation(result.location);
   saveGame();render();setNotice(pendingCheck?'O Mestre pede um teste. Usa o botão Lançar teste e continuar a história.':'Cena concluída. Podes decidir a próxima ação.');
- }catch(e){messages=previous;render();setNotice('Não foi possível continuar: '+e.message+(initial?' Clica em Tentar iniciar para repetir.':''));if(initial){firstAttempted=false;$('retryStart').hidden=false}}
+  return true;
+ }catch(e){messages=previous;render();setNotice('Não foi possível continuar: '+e.message+(initial?' Clica em Tentar iniciar para repetir.':''));if(initial){firstAttempted=false;$('retryStart').hidden=false}return false}
  finally{busy=false;render()}
 }
 async function begin(){
@@ -245,21 +249,28 @@ $('resolveCheck').onclick=async()=>{
  if(!pendingCheck||busy||rollInProgress)return;
  rollInProgress=true;
  const check={...pendingCheck};
- const proficiencies=Array.isArray(char.proficiencias)?char.proficiencias.map(norm):[];
- const proficient=proficiencies.includes(norm(check.name))||proficiencies.includes(check.ability);
- const result=abilityCheck(char,check.ability,{proficient,dc:check.dc});
- const outcome=result.success?'SUCESSO':'FALHA';
- const narrative='RESULTADO DE TESTE (lançamento já efetuado pelo motor, não repetir): '
-  +check.name+' ('+abilityLabels[check.ability]+'), CD '+check.dc+', d20='+result.die
-  +', modificador total='+(result.bonus>=0?'+':'')+result.bonus
-  +', total='+result.total+', '+outcome+'. '
-  +'Resolve a ação anteriormente descrita pelo jogador, respeitando este resultado.';
- $('dice').textContent=check.name+': '+result.die+' '+(result.bonus>=0?'+':'')+result.bonus
-  +' = '+result.total+' / CD '+check.dc+' — '+outcome;
- pendingCheck=null;
- saveGame();render();
- try{await runTurn(narrative,{initial:false})}
- finally{rollInProgress=false;showPendingCheck()}
+ try{
+  if(!pendingRoll){
+   // Nunca presumir proficiência: apenas usar proficiências expressamente registadas.
+   const proficiencies=Array.isArray(char.proficiencias)?char.proficiencias.map(norm):[];
+   const proficient=proficiencies.includes(norm(check.name))||proficiencies.includes(check.ability);
+   const result=abilityCheck(char,check.ability,{proficient,dc:check.dc});
+   const outcome=result.success?'SUCESSO':'FALHA';
+   const narrative='RESULTADO DE TESTE (lançamento já efetuado pelo motor, não repetir): '
+    +check.name+' ('+abilityLabels[check.ability]+'), CD '+check.dc+', d20='+result.die
+    +', modificador total='+(result.bonus>=0?'+':'')+result.bonus
+    +', total='+result.total+', '+outcome+'. '
+    +'Resolve a ação anteriormente descrita pelo jogador, respeitando este resultado.';
+   pendingRoll={check,result,narrative};
+   saveGame();
+  }
+  const rr=pendingRoll.result;
+  $('dice').textContent=check.name+': '+rr.die+' '+(rr.bonus>=0?'+':'')+rr.bonus
+    +' = '+rr.total+' / CD '+check.dc+' — '+(rr.success?'SUCESSO':'FALHA');
+  pendingCheck=null;
+  const succeeded=await runTurn(pendingRoll.narrative,{initial:false});
+  if(!succeeded){pendingCheck=check;saveGame();render();setNotice('A ligação ao Mestre falhou. O resultado foi guardado: podes tentar de novo sem relançar os dados.')}
+ }finally{rollInProgress=false;showPendingCheck()}
 };
 const backdrop=$('modalBackdrop');
 $('modalClose').onclick=()=>backdrop.hidden=true;
