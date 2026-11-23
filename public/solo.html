@@ -199,6 +199,7 @@ let selectedVariant=()=>Number(locationVisits[scene]||1)%2===0?'b':'a';
 let artwork='',busy=false,artBusy=false,firstAttempted=false;
 let pendingCheck=game?.pendingCheck||null;
 let pendingDice=game?.pendingDice||null;
+let autoDiceSubmissionScheduled=false;
 const CHECK_ABILITIES={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
 // Compatibilidade com aventuras anteriores: aceitar pedidos explícitos escritos na narrativa.
 function inferLegacyCheck(text){
@@ -233,7 +234,7 @@ function renderRequestedCheck(){
  if(active){
    $('requestedCheckTitle').textContent='Teste pedido: '+pendingCheck.name+' — CD '+pendingCheck.dc;
    $('requestedCheckDetail').textContent=pendingDice
-    ?'Lançamento já guardado: '+pendingDice.total+'. Abre os dados para continuar sem voltar a lançar.'
+    ?'Lançamento já guardado: '+pendingDice.total+'. Abre os dados para retomar automaticamente sem voltar a lançar.'
     :'Atributo '+CHECK_ABILITIES[pendingCheck.ability]+' · bónus '+signed(checkBonus(pendingCheck))+'. O resultado será aplicado à história.';
  }
 }
@@ -570,7 +571,7 @@ async function runTurn(action,{initial=false,resolvingCheck=false}={}){
    char.companheiros=(char.companheiros||[]).map(ally=>advanceMember(ally,xp));
   }
   saveGame();render();
-  setNotice(pendingCheck?'O Mestre pediu um teste. Abre os dados e aplica o resultado para continuar.'
+  setNotice(pendingCheck?'O Mestre pediu um teste. Abre os dados para lançar; o jogo continuará automaticamente.'
     :xp?'Cena concluída. O grupo recebeu '+xp+' XP por um objetivo alcançado.':'Cena concluída. Podes decidir a próxima ação.');
   return true;
  }catch(e){messages=previous;render();setNotice('Não foi possível continuar: '+e.message+(initial?' Clica em Tentar iniciar para repetir.':''));if(initial){firstAttempted=false;$('retryStart').hidden=false}return false}
@@ -622,24 +623,18 @@ function showDice(){
   const renderHistory=()=>{history.replaceChildren();for(const entry of rollHistory.slice(-8).reverse())history.append(make('p',entry))};
   if(active){
    const check={...pendingCheck};
-   const summary=make('p','O Mestre pediu '+check.name+' ('+CHECK_ABILITIES[check.ability]+'), CD '+check.dc+'. O sistema aplica os bónus da tua ficha e guarda o resultado antes de o enviar ao Mestre.');
-   const apply=make('button','Aplicar resultado e continuar a história');apply.disabled=!pendingDice;
-   cast.disabled=!!pendingDice;
+   const summary=make('p','O Mestre pediu '+check.name+' ('+CHECK_ABILITIES[check.ability]+'), CD '+check.dc+'. O resultado será guardado e aplicado automaticamente à narrativa.');
+   const status=make('p','Depois do lançamento, esta janela fecha automaticamente.','helper');
    function showSaved(){
     if(!pendingDice)return;
     const r=pendingDice;
-    const status=r.total>=check.dc?'SUCESSO':'FALHA';
-    result.textContent='d20 '+r.die+' '+signed(r.bonus)+' = '+r.total+' / CD '+check.dc+' — '+status;
-    $('dice').textContent=check.name+': '+r.total+' / CD '+check.dc+' — '+status;
-    apply.disabled=false;cast.disabled=true;
+    const outcome=r.total>=check.dc?'SUCESSO':'FALHA';
+    result.textContent='d20 '+r.die+' '+signed(r.bonus)+' = '+r.total+' / CD '+check.dc+' — '+outcome;
+    $('dice').textContent=check.name+': '+r.total+' / CD '+check.dc+' — '+outcome;
+    cast.disabled=true;
+    status.textContent='Resultado registado. A regressar ao jogo e a continuar a história…';
    }
-   cast.onclick=()=>{
-    if(pendingDice||busy)return;
-    const r=rollDice(1,20,checkBonus(check));
-    pendingDice={die:r.rolls[0],bonus:r.bonus,total:r.total,check};
-    saveGame();showSaved();
-   };
-   apply.onclick=async()=>{
+   async function submitSavedResult(){
     if(!pendingDice||busy)return;
     const r=pendingDice;
     const outcome=r.total>=check.dc?'SUCESSO':'FALHA';
@@ -647,15 +642,32 @@ function showDice(){
       ' ('+CHECK_ABILITIES[check.ability]+'), CD '+check.dc+', d20='+r.die+
       ', modificador='+signed(r.bonus)+', total='+r.total+', '+outcome+
       '. Resolve agora a ação do jogador que motivou o teste, respeitando este resultado.';
-    apply.disabled=true;cast.disabled=true;
     backdrop.hidden=true;
+    setNotice('Teste de '+check.name+': '+r.total+' / CD '+check.dc+' — '+outcome+'. O Mestre está a continuar a história…');
     const ok=await runTurn(payload,{resolvingCheck:true});
-    if(!ok){render();setNotice('O resultado '+r.total+' ficou guardado. Reabre Dados e carrega Aplicar resultado, sem novo lançamento.')}
+    if(!ok){
+      render();
+      setNotice('Não foi possível contactar o Mestre. O resultado '+r.total+' ficou guardado; abre Dados para repetir o envio sem novo lançamento.');
+    }
+   }
+   function scheduleContinuation(){
+    if(autoDiceSubmissionScheduled||!pendingDice)return;
+    autoDiceSubmissionScheduled=true;
+    window.setTimeout(async()=>{
+      try{await submitSavedResult()}finally{autoDiceSubmissionScheduled=false}
+    },1800);
+   }
+   cast.onclick=()=>{
+    if(pendingDice||busy)return;
+    const r=rollDice(1,20,checkBonus(check));
+    pendingDice={die:r.rolls[0],bonus:r.bonus,total:r.total,check};
+    saveGame();showSaved();scheduleContinuation();
    };
    showSaved();
-   root.append(summary,bar,cast,result,apply,make('p','Se a ligação falhar, o mesmo resultado será reutilizado. Não precisas de voltar a lançar.','helper'));
+   root.append(summary,bar,cast,result,status);
+   if(pendingDice)scheduleContinuation();
   }else{
-   const help=make('p','Lançamentos livres: os resultados não substituem testes pedidos pelo Mestre. Quando houver um teste da história, esta janela mostrará a CD e o botão para aplicar o resultado.','helper');
+   const help=make('p','Lançamentos livres não alteram a história. Quando o Mestre pedir um teste, os dados ficam associados à ação e o jogo continua automaticamente.','helper');
    cast.onclick=()=>{
     const r=rollDice(count.value,faces.value,bonus.value);
     const text=r.dice+' '+(r.bonus<0?'− '+Math.abs(r.bonus):'+ '+r.bonus)+'  →  ['+r.rolls.join(', ')+'] = '+r.total;
