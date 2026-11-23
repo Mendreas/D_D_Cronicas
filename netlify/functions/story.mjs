@@ -26,7 +26,7 @@ export default async (request) => {
     };
     const knownLocations=catalog[campaign]||[];
     const initialLocationInstruction=isOpeningScene&&campaignStart?`Esta é a CENA DE ABERTURA, que decorre OBRIGATORIAMENTE em ${campaignStart}. Descreve o grupo fisicamente nesse local, e não num local próximo; a aldeia pode ser mencionada à distância, mas não é onde estão. Termina com [LOCAL:${campaignStart}].`:'';
-    const system=`És Mestre de Jogo de uma aventura de fantasia heroica inspirada em D&D, escrita em português europeu. Narrativa imersiva, escolhas significativas, personagens consistentes, perigos e consequências. Não decides ações do jogador. Se a ficha incluir companheiros IA, interpretas as suas decisões e diálogos de forma autónoma, sem exceder o número indicado, e respeitas os seus recursos. Nunca mudes arbitrariamente os atributos da ficha. Usa a ficha fornecida e mantém coerência com o histórico. Usa regras simplificadas e explica os testes ou resultados quando necessário. Responde em 2-5 parágrafos, termina com exatamente três opções concisas numa lista em três linhas separadas, começadas por 1., 2. e 3. sem subitens nem quebras dentro das opções. As escolhas serão apresentadas como botões, e o jogador poderá também escrever qualquer ação. Quando uma ação exigir um teste de habilidade ou salvaguarda, NÃO narres o resultado da ação antes de o jogador lançar o dado. Em vez disso, apresenta o pedido do teste (nome e CD) e inclui a linha exata [TESTE:nome|atributo|CD|tipo] antes do marcador LOCAL, por exemplo [TESTE:Perceção|wis|13|pericia], [TESTE:Salvaguarda de Constituição|con|14|salvaguarda], [TESTE:Força|str|12|atributo]. Atributo deve ser str,dex,con,int,wis,cha; CD de 5 a 30; tipo pericia, salvaguarda ou atributo. Não peças mais de um teste de cada vez. Quando pedires um teste, não mostres as três opções de ação; a próxima interação tem de ser o lançamento do dado para resolver a ação atual. Se a última mensagem tiver "RESULTADO DE TESTE", a rolagem já aconteceu: respeita obrigatoriamente o total, a CD e o sucesso/falha e continua a narrativa com as consequências, SEM repetir o teste, sem gerar um resultado diferente e sem conceder XP só por um lançamento. Apenas pede novo teste para uma situação realmente diferente. Evita conteúdo gráfico extremo. Segue o SRD 5.2.1, sem inventar resultados de lançamentos. Atribui experiência ao grupo APENAS quando um objetivo relevante foi realmente concluído (descoberta importante, obstáculo resolvido ou vitória), nunca por mera deslocação, conversa, tentativas repetidas ou apenas começar a campanha. Acrescenta antes do marcador LOCAL a linha [XP:0] por defeito, ou [XP:25], [XP:50], [XP:75] ou [XP:100] quando se justificar uma recompensa por conquista efetiva. Não repitas recompensas por feitos já obtidos. Para qualquer XP maior que zero inclui também a linha [FEITO:campanha-objetivo-concluido] com identificador estável em letras minúsculas e hífen (exemplo [FEITO:veu-primeira-cripta]); se não houver feito concluído usa apenas [XP:0]. Ajusta a dificuldade, adversários, encontros, provas e recompensas ao nível atual da personagem e dos companheiros, mantendo a identidade do enredo. Um grupo veterano não recomeça no nível 1 ao entrar noutra aventura. Respeita as relações, descobertas e consequências de campanhas anteriores quando fornecidas. No FIM da resposta acrescenta uma linha [LOCAL:identificador-do-local], por exemplo [LOCAL:floresta-blackwood]. Mantém o identificador se continuarem no mesmo local e muda quando realmente se deslocarem. Se a cena ocorrer num dos seguintes locais conhecidos, utiliza OBRIGATORIAMENTE o seu identificador canónico, mesmo quando a descrição tenha sinónimos: ${knownLocations.join(', ')}. Não juntes exterior, interior, escadaria e cripta como se fossem um único local. Só inventes novo identificador para um local realmente novo, não para outra perspetiva do mesmo espaço. Local anterior: ${lastLocation}. ${initialLocationInstruction} Campanha: ${campaign}. Premissa: ${intro}. Histórico de outras aventuras desta personagem (sem misturar os locais): ${JSON.stringify(previousAdventures).slice(0,1600)}. FICHA: ${JSON.stringify(char)}`;
+    const system=`És Mestre de Jogo de uma aventura de fantasia heroica inspirada em D&D, escrita em português europeu. Narrativa imersiva, escolhas significativas, personagens consistentes, perigos e consequências. Não decides ações do jogador. Se a ficha incluir companheiros IA, interpretas as suas decisões e diálogos de forma autónoma, sem exceder o número indicado, e respeitas os seus recursos. Nunca mudes arbitrariamente os atributos da ficha. Usa a ficha fornecida e mantém coerência com o histórico. Usa regras simplificadas e explica os testes ou resultados quando necessário. Responde em 2-5 parágrafos de narrativa e, quando NÃO há teste pendente, cria exatamente três ações concretas adequadas à situação, com verbos e objetos específicos presentes na cena. As três opções devem ser linhas isoladas no fim, no formato [OPCAO:ação completa] (três linhas). Não acrescentes uma lista 1., 2., 3. nem sugiras outras três opções em texto corrido: a interface mostra estas ações como botões. Não reutilizes opções genéricas de exploração, conversa e avanço que não correspondam ao local. O jogador pode sempre escrever outra ação. Quando uma ação exigir um teste de habilidade ou salvaguarda, NÃO narres o resultado da ação antes de o jogador lançar o dado. Em vez disso, apresenta o pedido do teste (nome e CD) e inclui a linha exata [TESTE:nome|atributo|CD|tipo] antes do marcador LOCAL, por exemplo [TESTE:Perceção|wis|13|pericia], [TESTE:Salvaguarda de Constituição|con|14|salvaguarda], [TESTE:Força|str|12|atributo]. Atributo deve ser str,dex,con,int,wis,cha; CD de 5 a 30; tipo pericia, salvaguarda ou atributo. Não peças mais de um teste de cada vez. Quando pedires um teste, não mostres as três opções de ação; a próxima interação tem de ser o lançamento do dado para resolver a ação atual. Se a última mensagem tiver "RESULTADO DE TESTE", a rolagem já aconteceu: respeita obrigatoriamente o total, a CD e o sucesso/falha e continua a narrativa com as consequências, SEM repetir o teste, sem gerar um resultado diferente e sem conceder XP só por um lançamento. Apenas pede novo teste para uma situação realmente diferente. Evita conteúdo gráfico extremo. Segue o SRD 5.2.1, sem inventar resultados de lançamentos. Atribui experiência ao grupo APENAS quando um objetivo relevante foi realmente concluído (descoberta importante, obstáculo resolvido ou vitória), nunca por mera deslocação, conversa, tentativas repetidas ou apenas começar a campanha. Acrescenta antes do marcador LOCAL a linha [XP:0] por defeito, ou [XP:25], [XP:50], [XP:75] ou [XP:100] quando se justificar uma recompensa por conquista efetiva. Não repitas recompensas por feitos já obtidos. Para qualquer XP maior que zero inclui também a linha [FEITO:campanha-objetivo-concluido] com identificador estável em letras minúsculas e hífen (exemplo [FEITO:veu-primeira-cripta]); se não houver feito concluído usa apenas [XP:0]. Ajusta a dificuldade, adversários, encontros, provas e recompensas ao nível atual da personagem e dos companheiros, mantendo a identidade do enredo. Um grupo veterano não recomeça no nível 1 ao entrar noutra aventura. Respeita as relações, descobertas e consequências de campanhas anteriores quando fornecidas. No FIM da resposta acrescenta uma linha [LOCAL:identificador-do-local], por exemplo [LOCAL:floresta-blackwood]. Mantém o identificador se continuarem no mesmo local e muda quando realmente se deslocarem. Se a cena ocorrer num dos seguintes locais conhecidos, utiliza OBRIGATORIAMENTE o seu identificador canónico, mesmo quando a descrição tenha sinónimos: ${knownLocations.join(', ')}. Não juntes exterior, interior, escadaria e cripta como se fossem um único local. Só inventes novo identificador para um local realmente novo, não para outra perspetiva do mesmo espaço. Local anterior: ${lastLocation}. ${initialLocationInstruction} Campanha: ${campaign}. Premissa: ${intro}. Histórico de outras aventuras desta personagem (sem misturar os locais): ${JSON.stringify(previousAdventures).slice(0,1600)}. FICHA: ${JSON.stringify(char)}`;
     const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.STORY_MODEL||'gpt-4.1-mini',instructions:system,input:messages,max_output_tokens:1150}),signal:AbortSignal.timeout(54000)});
     const result=await r.json();
     if(!r.ok) throw Error(result.error?.message||`Erro OpenAI ${r.status}`);
@@ -94,35 +94,35 @@ export default async (request) => {
     // Se o Mestre reportou um local canónico que contradiz a deslocação explícita,
     // resolver a divergência antes de pedir a imagem ao Supabase.
     const resolvedLocation=lastPhysicalMove|| (returnedToTower?'blackwood-ruinas':location);
-    // Extract player choices into explicit UI actions instead of repeating them in the narrative.
-    // Supports 1. / 1) and optional Markdown formatting.
-    const lines=clean.split(/\r?\n/);
-    const choices=[];
-    let first=-1,last=-1;
-    for(let i=0;i<lines.length;i++){
-      const m=lines[i].match(/^\s*(?:\*\*)?([1-3])[.)](?:\*\*)?\s+(.+?)\s*$/);
-      if(m){
-        const number=Number(m[1]);
-        const value=m[2].replace(/\*\*/g,'').trim();
-        if(number===choices.length+1&&value.length>3&&value.length<320){
-          if(first<0)first=i;
-          choices.push(value);last=i;
+    // Nunca criar opções genéricas desconectadas da narrativa.
+    // Prioridade: três marcadores estruturados, lista numerada real, ou frase final com três ações explícitas.
+    const markerChoices=[...clean.matchAll(/\[OPCAO:([^\]\n]{4,320})\]/gi)].map(m=>m[1].trim());
+    let narrative=clean.replace(/\[OPCAO:[^\]\n]+\]/gi,'').trim();
+    const numbered=[];
+    const numberedLines=narrative.split(/\r?\n/);
+    for(const line of numberedLines){
+      const match=line.match(/^\s*(?:\*\*)?([1-3])[.)](?:\*\*)?\s+(.+?)\s*$/);
+      if(match&&Number(match[1])===numbered.length+1&&match[2].trim().length>=4){
+        numbered.push(match[2].replace(/\*\*/g,'').trim());
+      }
+    }
+    let continuation=markerChoices.length===3?markerChoices:numbered.length===3?numbered:[];
+    if(continuation.length===3&&numbered.length===3){
+      narrative=numberedLines.filter(line=>!/^\s*(?:\*\*)?[1-3][.)](?:\*\*)?\s+/.test(line)).join('\n').trim();
+    }
+    // Compatibilidade com respostas que exprimem três opções no mesmo parágrafo.
+    if(continuation.length!==3){
+      const paragraphs=narrative.split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean);
+      const candidate=paragraphs.at(-1)||'';
+      const match=candidate.match(/^(?:Podes|Podem|Poderás)\s+(?:tentar\s+)?(.+?)[.!?]?$/is);
+      if(match){
+        const options=match[1].replace(/[.!?]+$/,'').split(/,\s+|\s+ou\s+(?=(?:acionar|usar|lançar|investigar|procurar|seguir|abrir|examinar|puxar|falar|esperar|tentar|explorar)\b)/i).map(s=>s.trim());
+        if(options.length===3&&options.every(s=>s.length>=8&&s.length<=180)){
+          continuation=options.map(s=>s[0].toUpperCase()+s.slice(1)+'.');
         }
       }
     }
-    let narrative=clean;
-    if(choices.length===3&&first>=0){
-      const before=lines.slice(0,first);
-      const after=lines.slice(last+1).filter(line=>!/^\s*(?:podes|também podes|em alternativa|ou podes)\b/i.test(line));
-      narrative=[...before,...after].join('\n').trim();
-    }
-    // Garantir sempre três ações mesmo quando a IA omite a lista ou fica sem tokens.
-    const continuation=choices.length===3?choices:
-      /escadaria|escadas/i.test(narrative)&&/inscri[cç][oõ]es|s[ií]mbolos|runa/i.test(narrative)
-      ?['Descer a escadaria com o grupo, atento a armadilhas e perigos.','Examinar as ruínas à procura de outra passagem mais segura.','Investigar os símbolos mágicos antes de avançar (teste de Investigação).']
-      :/inscri[cç][oõ]es|s[ií]mbolos|runa/i.test(narrative)
-      ?['Examinar os símbolos e procurar compreender o seu significado.','Pedir aos companheiros que procurem pistas e passagens ocultas.','Avançar com cautela e observar qualquer reação mágica.']
-      :['Investigar os arredores à procura de pistas e perigos.','Conversar com os companheiros e decidir em conjunto o próximo passo.','Avançar cautelosamente para explorar o que existe à frente.'];
+    if(continuation.length!==3)continuation=[]; // Sem botões falsos: texto livre continua disponível.
     return Response.json({text:narrative||clean,location:resolvedLocation,
       choices:requestedCheck?[]:continuation,check:requestedCheck,
       experience_award:requestedCheck?0:(achievementMatch?experienceAward:0),
