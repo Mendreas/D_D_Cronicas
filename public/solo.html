@@ -75,7 +75,7 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 .dice-options label{display:flex;flex-direction:column;gap:6px;color:#e2c69b}
 .dice-options select,.dice-options input{width:100%}
 .dice-result{font:700 23px Georgia,serif;color:#f3d396;min-height:42px;margin:15px 0;overflow-wrap:anywhere}
-.dice-history p{font-size:12px;color:#c4d2e0;margin:5px 0}
+.dice-history p{font-size:12px;color:#c4d2e0;margin:5px 0}.requested-check{background:#302c24;border:1px solid #947447;border-radius:10px;padding:15px;margin:0 0 13px;color:#f0d5a5}.requested-check strong{display:block;margin-bottom:4px}.requested-check button{margin-top:9px}.requested-check small{color:#d4c4ad}
 @media(max-width:650px){.sheet-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.sheet-edit-grid,.sheet-skill-grid{grid-template-columns:1fr}.dice-options{grid-template-columns:1fr 1fr}}
 [hidden]{display:none!important}
 @media(max-width:790px){header{align-items:flex-start}.panels{grid-template-columns:1fr}#chat{height:48vh;min-height:300px}#artBox{height:290px;min-height:290px}.action-row{flex-direction:column}.action-row button{min-height:45px}.stats{grid-template-columns:repeat(2,1fr)}}
@@ -94,7 +94,11 @@ textarea{width:100%;resize:vertical}.action-row button{min-width:128px}
 <section class="panel" aria-label="Ilustração do local"><div class="panel-head"><span id="locationTitle">Local atual</span><span class="helper">Imagem do cenário</span></div>
 <div id="artBox"><div class="placeholder">O cenário será ilustrado automaticamente quando o Mestre apresentar o local.</div></div><div class="image-toolbar"><button id="actionImage" class="secondary" disabled>Ver imagem detalhada da ação</button><button id="baseImage" class="secondary" hidden>Voltar à imagem do local</button></div></section>
 </div>
-<section class="panel action-panel"><label for="action">O que fazes a seguir?</label>
+<section class="panel action-panel"><div id="requestedCheck" class="requested-check" hidden>
+<strong id="requestedCheckTitle">O Mestre pediu um teste de dados</strong>
+<small id="requestedCheckDetail"></small>
+<div><button id="requestedCheckButton" class="secondary">🎲 Abrir dados para resolver o teste</button></div>
+</div><label for="action">O que fazes a seguir?</label>
 <div id="choices" class="choices" aria-label="Escolhas sugeridas pelo Mestre de Jogo" hidden></div>
 <div class="action-row"><textarea id="action" placeholder="Descreve a tua ação: examino a porta, pergunto a Kael, lanço um feitiço..."></textarea>
 <button id="send" disabled>Enviar ação</button></div>
@@ -193,6 +197,34 @@ let locationVisits=game?.locationVisits&&typeof game.locationVisits==='object'?g
 if(scene&&!locationVisits[scene])locationVisits[scene]=1;
 let selectedVariant=()=>Number(locationVisits[scene]||1)%2===0?'b':'a';
 let artwork='',busy=false,artBusy=false,firstAttempted=false;
+let pendingCheck=game?.pendingCheck||null;
+let pendingDice=game?.pendingDice||null;
+const CHECK_ABILITIES={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
+function normalizeCheck(check){
+ if(!check||!['str','dex','con','int','wis','cha'].includes(check.ability))return null;
+ const dc=Number(check.dc);if(!Number.isInteger(dc)||dc<5||dc>30)return null;
+ return {name:String(check.name||CHECK_ABILITIES[check.ability]).slice(0,60),ability:check.ability,dc,
+   type:['pericia','salvaguarda','atributo'].includes(check.type)?check.type:'pericia'};
+}
+function checkBonus(check){
+ if(check.type==='salvaguarda')return savingThrowBonus(char,check.ability);
+ if(check.type==='atributo')return modifier(char.atributos?.[check.ability]??10);
+ const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+ const matched=SKILLS_2024.find(([name,ability])=>ability===check.ability&&norm(name)===norm(check.name));
+ return matched?skillBonus(char,matched[0]):modifier(char.atributos?.[check.ability]??10);
+}
+function renderRequestedCheck(){
+ const active=!!pendingCheck;
+ $('requestedCheck').hidden=!active;
+ $('action').disabled=active||busy;
+ $('requestedCheckButton').disabled=busy;
+ if(active){
+   $('requestedCheckTitle').textContent='Teste pedido: '+pendingCheck.name+' — CD '+pendingCheck.dc;
+   $('requestedCheckDetail').textContent=pendingDice
+    ?'Lançamento já guardado: '+pendingDice.total+'. Abre os dados para continuar sem voltar a lançar.'
+    :'Atributo '+CHECK_ABILITIES[pendingCheck.ability]+' · bónus '+signed(checkBonus(pendingCheck))+'. O resultado será aplicado à história.';
+ }
+}
 let detailView=false,detailArtwork='',detailKey='';
 let visited=Array.isArray(game?.visitedLocations)?game.visitedLocations:[];
 let travelHistory=Array.isArray(game?.travelHistory)?game.travelHistory.slice(-120):[...visited];
@@ -271,7 +303,7 @@ function showCharacterValidation(){
  $('validateCharacter').href='/personagem.html?editar='+encodeURIComponent(game.characterId||char.id)+'&regressar='+encodeURIComponent(saveId||'');
 }
 function saveGame(announce=false){
- game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.travelHistory=travelHistory.slice(-120);game.locationVisits=locationVisits;game.updated=Date.now();
+ game.character=char;game.messages=messages;game.currentLocation=scene;game.visitedLocations=visited;game.travelHistory=travelHistory.slice(-120);game.locationVisits=locationVisits;game.pendingCheck=pendingCheck;game.pendingDice=pendingDice;game.updated=Date.now();
  localStorage.setItem(saveKey,JSON.stringify(game));
  queuePlayerSync();
  const profileId=game.characterId||char.id;
@@ -316,8 +348,9 @@ function render(){
   row.append(sp,text);root.append(row);
  }
  root.scrollTop=root.scrollHeight;
+ renderRequestedCheck();
  renderChoices();
- $('send').disabled=busy||!loggedIn||!characterFollowsSRD()||!messages.some(m=>m.role==='assistant');
+ $('send').disabled=busy||!!pendingCheck||!loggedIn||!characterFollowsSRD()||!messages.some(m=>m.role==='assistant');
  $('actionImage').disabled=busy||artBusy||!loggedIn||!scene||!messages.some(m=>m.role==='assistant');
  $('locationTitle').textContent='Local: '+placeName(scene);
 }
@@ -346,7 +379,7 @@ function fallbackChoices(narrative){
 function renderChoices(){
  const wrap=$('choices');wrap.replaceChildren();
  const last=messages.at(-1);
- if(!last||last.role!=='assistant'||busy){wrap.hidden=true;return}
+ if(!last||last.role!=='assistant'||busy||pendingCheck){wrap.hidden=true;return}
  const stored=(Array.isArray(last.choices)&&last.choices.length===3)?last.choices:extractLegacyChoices(last.content);
  const options=stored.length===3?stored:fallbackChoices(last.content);
  if(!options.length){wrap.hidden=true;return}
@@ -498,9 +531,10 @@ function previousAdventures(){
     lastEvent:recent.slice(-650)};
  }).filter(Boolean).slice(0,2);
 }
-async function runTurn(action,{initial=false}={}){
- if(busy)return;
- if(!characterFollowsSRD()){showCharacterValidation();setNotice('Revê os atributos segundo um dos três métodos oficiais antes de continuar a aventura.');return}
+async function runTurn(action,{initial=false,resolvingCheck=false}={}){
+ if(busy)return false;
+ if(pendingCheck&&!resolvingCheck){setNotice('Resolve primeiro o teste pedido pelo Mestre de Jogo.');return false}
+ if(!characterFollowsSRD()){showCharacterValidation();setNotice('Revê os atributos segundo um dos três métodos oficiais antes de continuar a aventura.');return false}
  busy=true;$('send').disabled=true;
  const previous=messages.slice();
  messages.push({role:'user',content:action,internal:initial});
@@ -509,6 +543,8 @@ async function runTurn(action,{initial=false}={}){
   const result=await request('/api/story',{character:char,messages,campaign:game.campaign,intro:game.intro,lastLocation:scene,previousAdventures:previousAdventures()});
   if(!result.text)throw Error('O Mestre não devolveu uma narrativa.');
   messages.push({role:'assistant',content:result.text,choices:Array.isArray(result.choices)?result.choices:[]});
+  pendingCheck=normalizeCheck(result.check);
+  pendingDice=null;
   detailView=false;detailArtwork='';detailKey='';$('baseImage').hidden=true;
   updatedLocation(result.location);
   const milestone=String(result.achievement_id||'');
@@ -522,8 +558,10 @@ async function runTurn(action,{initial=false}={}){
    char.companheiros=(char.companheiros||[]).map(ally=>advanceMember(ally,xp));
   }
   saveGame();render();
-  setNotice(xp?'Cena concluída. O grupo recebeu '+xp+' XP por um objetivo alcançado.':'Cena concluída. Podes decidir a próxima ação.');
- }catch(e){messages=previous;render();setNotice('Não foi possível continuar: '+e.message+(initial?' Clica em Tentar iniciar para repetir.':''));if(initial){firstAttempted=false;$('retryStart').hidden=false}}
+  setNotice(pendingCheck?'O Mestre pediu um teste. Abre os dados e aplica o resultado para continuar.'
+    :xp?'Cena concluída. O grupo recebeu '+xp+' XP por um objetivo alcançado.':'Cena concluída. Podes decidir a próxima ação.');
+  return true;
+ }catch(e){messages=previous;render();setNotice('Não foi possível continuar: '+e.message+(initial?' Clica em Tentar iniciar para repetir.':''));if(initial){firstAttempted=false;$('retryStart').hidden=false}return false}
  finally{busy=false;render()}
 }
 async function begin(){
@@ -541,6 +579,7 @@ $('logoutBtn').onclick=async()=>{const sb=await gameClient();await sb.auth.signO
 $('retryImage').onclick=()=>{if(scene)void illustrate(scene,true)};
 $('retryStart').onclick=()=>{firstAttempted=false;$('retryStart').hidden=true;void begin()};
 $('roll').onclick=()=>showDice();
+$('requestedCheckButton').onclick=()=>showDice();
 const backdrop=$('modalBackdrop');
 $('modalClose').onclick=()=>backdrop.hidden=true;
 backdrop.onclick=e=>{if(e.target===backdrop)backdrop.hidden=true};
@@ -555,18 +594,63 @@ function field(parent,labelText,value,editable=false,onChange=null){
 const signed=n=>n>=0?'+'+n:String(n);
 function showDice(){
  openModal('🎲 Lançamento de dados',root=>{
+  const active=!!pendingCheck;
   const bar=make('div',undefined,'dice-options');
   const count=make('select'),faces=make('select'),bonus=make('input');
   for(let n=1;n<=10;n++){const opt=make('option',String(n));opt.value=n;count.append(opt)}
   for(const n of [4,6,8,10,12,20,100]){const opt=make('option','d'+n);opt.value=n;faces.append(opt)}
-  faces.value='20';bonus.type='number';bonus.value='0';bonus.min='-99';bonus.max='99';
-  for(const [label,el] of [['Quantidade',count],['Dado',faces],['Modificador',bonus]]){const wrap=make('label',label);wrap.append(el);bar.append(wrap)}
-  const cast=make('button','Lançar dados'),result=make('div',undefined,'dice-result'),history=make('div',undefined,'dice-history');
+  faces.value='20';bonus.type='number';bonus.value=active?String(checkBonus(pendingCheck)):'0';bonus.min='-99';bonus.max='99';
+  if(active){count.value='1';count.disabled=true;faces.disabled=true;bonus.readOnly=true}
+  for(const [label,el] of [['Quantidade',count],['Dado',faces],['Modificador',bonus]]){
+   const wrap=make('label',label);wrap.append(el);bar.append(wrap)
+  }
+  const cast=make('button',active?'Lançar teste':'Lançar dados');
+  const result=make('div',undefined,'dice-result'),history=make('div',undefined,'dice-history');
   const rollHistory=[];
   const renderHistory=()=>{history.replaceChildren();for(const entry of rollHistory.slice(-8).reverse())history.append(make('p',entry))};
-  cast.onclick=()=>{const r=rollDice(count.value,faces.value,bonus.value);const text=r.dice+' '+(r.bonus<0?'− '+Math.abs(r.bonus):'+ '+r.bonus)+'  →  ['+r.rolls.join(', ')+'] = '+r.total;
-    result.textContent=text;rollHistory.push(text);renderHistory();$('dice').textContent=r.dice+' = '+r.total};
-  root.append(make('p','Escolhe o tipo e a quantidade de dados. Os resultados são aleatórios e não alteram automaticamente a narrativa.','helper'),bar,cast,result,make('h3','Últimos lançamentos'),history);
+  if(active){
+   const check={...pendingCheck};
+   const summary=make('p','O Mestre pediu '+check.name+' ('+CHECK_ABILITIES[check.ability]+'), CD '+check.dc+'. O sistema aplica os bónus da tua ficha e guarda o resultado antes de o enviar ao Mestre.');
+   const apply=make('button','Aplicar resultado e continuar a história');apply.disabled=!pendingDice;
+   cast.disabled=!!pendingDice;
+   function showSaved(){
+    if(!pendingDice)return;
+    const r=pendingDice;
+    const status=r.total>=check.dc?'SUCESSO':'FALHA';
+    result.textContent='d20 '+r.die+' '+signed(r.bonus)+' = '+r.total+' / CD '+check.dc+' — '+status;
+    $('dice').textContent=check.name+': '+r.total+' / CD '+check.dc+' — '+status;
+    apply.disabled=false;cast.disabled=true;
+   }
+   cast.onclick=()=>{
+    if(pendingDice||busy)return;
+    const r=rollDice(1,20,checkBonus(check));
+    pendingDice={die:r.rolls[0],bonus:r.bonus,total:r.total,check};
+    saveGame();showSaved();
+   };
+   apply.onclick=async()=>{
+    if(!pendingDice||busy)return;
+    const r=pendingDice;
+    const outcome=r.total>=check.dc?'SUCESSO':'FALHA';
+    const payload='RESULTADO DE TESTE (dado já lançado e guardado; NÃO repetir): '+check.name+
+      ' ('+CHECK_ABILITIES[check.ability]+'), CD '+check.dc+', d20='+r.die+
+      ', modificador='+signed(r.bonus)+', total='+r.total+', '+outcome+
+      '. Resolve agora a ação do jogador que motivou o teste, respeitando este resultado.';
+    apply.disabled=true;cast.disabled=true;
+    backdrop.hidden=true;
+    const ok=await runTurn(payload,{resolvingCheck:true});
+    if(!ok){render();setNotice('O resultado '+r.total+' ficou guardado. Reabre Dados e carrega Aplicar resultado, sem novo lançamento.')}
+   };
+   showSaved();
+   root.append(summary,bar,cast,result,apply,make('p','Se a ligação falhar, o mesmo resultado será reutilizado. Não precisas de voltar a lançar.','helper'));
+  }else{
+   const help=make('p','Lançamentos livres: os resultados não substituem testes pedidos pelo Mestre. Quando houver um teste da história, esta janela mostrará a CD e o botão para aplicar o resultado.','helper');
+   cast.onclick=()=>{
+    const r=rollDice(count.value,faces.value,bonus.value);
+    const text=r.dice+' '+(r.bonus<0?'− '+Math.abs(r.bonus):'+ '+r.bonus)+'  →  ['+r.rolls.join(', ')+'] = '+r.total;
+    result.textContent=text;rollHistory.push(text);renderHistory();$('dice').textContent=r.dice+' = '+r.total;
+   };
+   root.append(help,bar,cast,result,make('h3','Últimos lançamentos'),history);
+  }
  });
 }
 function sheetControl(parent,label,value,onUpdate,{min=0,max=999}={}){
