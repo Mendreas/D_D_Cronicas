@@ -200,6 +200,18 @@ let artwork='',busy=false,artBusy=false,firstAttempted=false;
 let pendingCheck=game?.pendingCheck||null;
 let pendingDice=game?.pendingDice||null;
 const CHECK_ABILITIES={str:'Força',dex:'Destreza',con:'Constituição',int:'Inteligência',wis:'Sabedoria',cha:'Carisma'};
+// Compatibilidade com aventuras anteriores: aceitar pedidos explícitos escritos na narrativa.
+function inferLegacyCheck(text){
+ const raw=String(text||'');
+ const m=raw.match(/(?:faz|realiza|efetua|lança|executa|peço|pede|necessário|necess[aá]rio)\s+(?:um\s+)?teste\s+(?:de\s+|da\s+|do\s+)?([A-Za-zÀ-ÿ ]{3,38})\s*\(?\s*CD\s*(\d{1,2})\s*\)?/i);
+ if(!m)return null;
+ const label=m[1].trim();
+ const normalize=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+ const skill=SKILLS_2024.find(([name])=>normalize(name)===normalize(label));
+ const ab=Object.entries(CHECK_ABILITIES).find(([,name])=>normalize(name)===normalize(label));
+ const ability=skill?.[1]||ab?.[0];
+ return ability?normalizeCheck({name:label,ability,dc:Number(m[2]),type:skill?'pericia':'atributo'}):null;
+}
 function normalizeCheck(check){
  if(!check||!['str','dex','con','int','wis','cha'].includes(check.ability))return null;
  const dc=Number(check.dc);if(!Number.isInteger(dc)||dc<5||dc>30)return null;
@@ -543,7 +555,7 @@ async function runTurn(action,{initial=false,resolvingCheck=false}={}){
   const result=await request('/api/story',{character:char,messages,campaign:game.campaign,intro:game.intro,lastLocation:scene,previousAdventures:previousAdventures()});
   if(!result.text)throw Error('O Mestre não devolveu uma narrativa.');
   messages.push({role:'assistant',content:result.text,choices:Array.isArray(result.choices)?result.choices:[]});
-  pendingCheck=normalizeCheck(result.check);
+  pendingCheck=normalizeCheck(result.check)||inferLegacyCheck(result.text);
   pendingDice=null;
   detailView=false;detailArtwork='';detailKey='';$('baseImage').hidden=true;
   updatedLocation(result.location);
@@ -697,7 +709,13 @@ for(const btn of document.querySelectorAll('[data-view]')){
 }
 async function init(){
  const token=await requireLogin();if(!token)return;
- loggedIn=true;if(mislabelledOpening||mislabelledReturn||recoveredSavedScene)saveGame();render();showAccess();showCharacterValidation();
+ loggedIn=true;
+ if(!pendingCheck&&messages.at(-1)?.role==='assistant'){
+   pendingCheck=inferLegacyCheck(messages.at(-1).content);
+   if(pendingCheck)saveGame();
+ }
+ if(mislabelledOpening||mislabelledReturn||recoveredSavedScene)saveGame();
+ render();showAccess();showCharacterValidation();
  if(!messages.some(x=>x.role==='assistant')){
    if(loggedIn)void begin();
  }else if(scene){await loadSceneImage()}
