@@ -39,3 +39,11 @@ Este projeto incorpora ideias e mecânicas do SRD 5.2.1 de Wizards of the Coast 
 
 ## Organização permanente das personagens
 Uma personagem é criada antes de escolher a campanha. A ficha base fica num perfil global (localStorage no solo, tabela game_profiles com RLS no multijogador); cada campanha tem uma gravação independente, mas pode reutilizar a personagem e a progressão. A progressão SRD e o registo de experiência ainda precisam do motor de regras completo; a importação automática das alterações entre campanhas foi preparada apenas no cliente.
+
+## Testes d20 integrados (23-11-2026)
+- Quando o Mestre pede um teste, a função Netlify devolve metadados de perícia/atributo/CD e apresenta o botão **Lançar teste e continuar a história** por cima da caixa de ações.
+- O lançamento usa um dado d20 do motor e o modificador do atributo da personagem (bónus de proficiência apenas se a perícia constar explicitamente na ficha).
+- O resultado de sucesso/falha, dado e total é enviado ao Mestre como ação e este é instruído a respeitá-lo, continuando automaticamente a cena.
+- O resultado é guardado no save para não voltar a lançar dados após falha de rede. Lançamentos livres continuam disponíveis mas não influenciam automaticamente a história.
+- Testes solicitados em narrativas anteriores com formato «teste de Perceção (CD 13)» são identificados pela interface como compatibilidade.
+- **Limite:** a IA continua a narrar a consequência e não existe ainda um motor autoritativo completo de perícias, vantagens/desvantagens, combate e recursos SRD 2024. A proficiência completa exige completar a ficha.
